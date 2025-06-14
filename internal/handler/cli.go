@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"docker-tui/internal/app"
+	"docker-tui/internal/domain"
+	"time"
 
 	"fmt"
 	"os"
@@ -20,104 +22,85 @@ type Container struct {
 	Created string
 	Status  string
 	Ports   string
-	Names   string
+	Name    string
 }
 
-func RunCLI(app *app.ContainerUseCase) {
+type ContainerUseCases = app.ContainerUseCases
+
+var autoRefreshInterval = 3 * time.Second
+var autoRefreshEnabled = false
+var stopAutoRefresh chan struct{}
+
+func RunCLI(usecase *ContainerUseCases) {
 	tuiApp := tview.NewApplication()
 
 	var currentFilteredState string = "running"
+	const defaultBarText = ""
 
-	table := tview.NewTable()
-	table.SetBorder(true)
-	table.SetSelectable(true, true)
-	table.SetFixed(1, 0)
+	table := helper.TableFormat()
 
-	headers := []string{
-		"CONTAINER ID", "IMAGE", "COMMAND", "CREATED", "STATUS", "PORTS", "NAMES",
-	}
-
-	table.SetTitle("Docker Container - CLI Based").SetTitleAlign(tview.AlignCenter)
-
-	for col, header := range headers {
-		table.SetCell(0, col,
-			tview.NewTableCell(header).
-				SetTextColor(tcell.ColorYellow).
-				SetAlign(tview.AlignCenter).
-				SetSelectable(false))
-	}
-
-	// containers, err := app.ListAllContainers(context.Background())
-	// containers, err := app.ListContainersByState(context.Background(), currentFilteredState)
-	// if err != nil {
-	// 	fmt.Printf("Failed to fetch containers data: %v\n", err)
-	// }
-
-	statusToggle := interface{}(tview.NewTextView()).(*tview.TextView)
-	statusToggle.SetDynamicColors(true).
-		SetTextAlign(tview.AlignCenter).
-		SetTextColor(tcell.ColorWhite).
-		SetBackgroundColor(tcell.ColorDarkBlue)
-
-	statusToggle.SetChangedFunc(func() {
-		tuiApp.Draw()
-	})
-	statusToggle.SetFocusFunc(func() {
-		statusToggle.SetBackgroundColor(tcell.ColorGray)
-	})
-	statusToggle.SetBlurFunc(func() {
-		statusToggle.SetBackgroundColor(tcell.ColorDarkBlue)
-	})
-
-	updateToggleText := func() {
-		if currentFilteredState == "running" {
-			statusToggle.SetText("[::b][green][ ACTIVE ][-:-:-] [white]INACTIVE")
-		} else if currentFilteredState == "exited" {
-			statusToggle.SetText("[white]ACTIVE [::b][red] [ INACTIVE ][-:-:-]")
-		} else {
-			statusToggle.SetText("dada")
-		}
-	}
+	statusToggle := helper.StatusToggle(tuiApp)
 
 	// Initialize UI
-	updateToggleText()
+	helper.UpdateToggleText(currentFilteredState, statusToggle)
 
-	statusBar := interface{}(tview.NewTextView()).(*tview.TextView)
-	statusBar.SetTextAlign(tview.AlignLeft).
-		SetTextColor(tcell.ColorWhite).
-		SetBackgroundColor(tcell.ColorDarkGray)
+	statusBar := helper.StatusBar()
+
+	stopAutoRefresh = make(chan struct{})
+
+	displayTimedStatus := func(message string, duration time.Duration) {
+		statusBar.SetText(message) // Set the new message
+		go func() {                // Run the timer in a new goroutine to avoid blocking the UI
+			time.Sleep(duration)
+			tuiApp.QueueUpdateDraw(func() { // Queue the update back on the main UI thread
+				statusBar.SetText(defaultBarText) // Revert to the default guide text
+			})
+		}()
+	}
 
 	refreshTable := func(state string) {
 		currentFilteredState = state
-		updateToggleText()
-
-		containers, err := app.ListContainersByState(context.Background(), currentFilteredState)
+		containers, err := usecase.Query.ListContainersByState(context.Background(), state)
 		if err != nil {
-			statusBar.SetText(fmt.Sprintf("Error: %v", err))
+			displayTimedStatus(fmt.Sprintf("Error fetching containers: %v", err), 3*time.Second)
 			return
 		}
-
-		// Clear old rows
-		for row := table.GetRowCount() - 1; row >= 1; row-- {
-			table.RemoveRow(row)
-		}
-
-		for rowNum, container := range containers {
-			rowIdx := rowNum + 1
-			table.SetCell(rowIdx, 0, tview.NewTableCell(container.ID[:12]).SetAlign(tview.AlignLeft).SetReference(&containers[rowNum]))
-			table.SetCell(rowIdx, 1, tview.NewTableCell(container.Image).SetAlign(tview.AlignLeft))
-			table.SetCell(rowIdx, 2, tview.NewTableCell(container.Command).SetAlign(tview.AlignLeft))
-			table.SetCell(rowIdx, 3, tview.NewTableCell(container.Created).SetAlign(tview.AlignLeft))
-			table.SetCell(rowIdx, 4, tview.NewTableCell(container.Status).SetAlign(tview.AlignLeft))
-			table.SetCell(rowIdx, 5, tview.NewTableCell(helper.FormatContainerPorts(container.Ports)).SetAlign(tview.AlignLeft))
-			table.SetCell(rowIdx, 6, tview.NewTableCell(container.Name).SetAlign(tview.AlignLeft))
-		}
+		helper.PopulateContainerTableUI(table, containers)
+		helper.UpdateToggleText(state, statusToggle)
 	}
 
-	exitGuide := tview.NewTextView().
-		SetText("Use arrow keys to navigate. Press 'q', ESC or Ctrl + C to quit.").
-		SetTextColor(tcell.ColorGreen).
-		SetTextAlign(tview.AlignCenter)
+	exitGuide := helper.ExitGuide()
+
+	startAutoRefresh := func() {
+		if autoRefreshEnabled { // Prevent starting if already enabled
+			return
+		}
+		autoRefreshEnabled = true
+		go func() {
+			ticker := time.NewTicker(autoRefreshInterval)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ticker.C:
+					refreshTable(currentFilteredState)
+				case <-stopAutoRefresh: // Listen for stop signal
+					return
+				}
+			}
+		}()
+		displayTimedStatus(fmt.Sprintf("Auto-refresh enabled (every %s). Press 'a' to disable.", autoRefreshInterval), 3*time.Second)
+	}
+
+	stopAutoRefreshFunc := func() {
+		if !autoRefreshEnabled {
+			return
+		}
+		autoRefreshEnabled = false
+		close(stopAutoRefresh)                // Send stop signal
+		stopAutoRefresh = make(chan struct{}) // Re-create channel for next start (important!)
+		displayTimedStatus("Auto-refresh disabled. Press 'a' to enable.", 3*time.Second)
+	}
 
 	flex := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(statusToggle, 1, 0, true).
@@ -126,6 +109,7 @@ func RunCLI(app *app.ContainerUseCase) {
 		AddItem(exitGuide, 1, 0, true)
 
 	refreshTable(currentFilteredState)
+	startAutoRefresh() // Start auto refresh when initiating the app
 
 	tuiApp.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
@@ -156,6 +140,79 @@ func RunCLI(app *app.ContainerUseCase) {
 				tuiApp.Stop()
 				return nil
 			}
+
+			if event.Rune() == 's' {
+				if tuiApp.GetFocus() == table {
+					row, _ := table.GetSelection()
+					if row < 1 {
+						displayTimedStatus("No container selected (header row).", 2*time.Second)
+						return nil
+					}
+					cell := table.GetCell(row, 0)
+					if cell == nil {
+						displayTimedStatus("Error: Selected cell is nil.", 3*time.Second)
+						return nil
+					}
+					containerRef := cell.GetReference()
+					if containerRef == nil {
+						displayTimedStatus("No container reference found.", 3*time.Second)
+						return nil
+					}
+					container := containerRef.(*domain.Container)
+					err := usecase.Control.StartContainer(context.Background(), container.ID)
+					if err != nil {
+						displayTimedStatus(fmt.Sprintf("Failed to start: %v", err), 5*time.Second)
+					} else {
+						displayTimedStatus(fmt.Sprintf("Container %s started. Switched to Active view.", container.ID[:12]), 3*time.Second)
+						currentFilteredState = "running"
+						helper.UpdateToggleText(currentFilteredState, statusToggle)
+
+						refreshTable(currentFilteredState)
+						statusBar.SetText(fmt.Sprintf("Container %s started. Switched to Active view.", container.ID[:12]))
+					}
+					return nil
+				}
+			}
+			if event.Rune() == 'x' {
+				if tuiApp.GetFocus() == table {
+					row, _ := table.GetSelection()
+					if row < 1 {
+						displayTimedStatus("No container selected (header row).", 2*time.Second)
+						return nil
+					}
+					cell := table.GetCell(row, 0)
+					if cell == nil {
+						displayTimedStatus("Error: Selected cell is nil.", 3*time.Second)
+						return nil
+					}
+					containerRef := cell.GetReference()
+					if containerRef == nil {
+						displayTimedStatus("No container reference found.", 3*time.Second)
+						return nil
+					}
+					container := containerRef.(*domain.Container)
+					err := usecase.Control.StopContainer(context.Background(), container.ID)
+					if err != nil {
+						displayTimedStatus(fmt.Sprintf("Failed to stop: %v", err), 5*time.Second)
+					} else {
+						displayTimedStatus(fmt.Sprintf("Container %s stopped.", container.ID[:12]), 3*time.Second)
+						helper.UpdateToggleText(currentFilteredState, statusToggle)
+						refreshTable(currentFilteredState)
+
+						// refreshTable(currentFilteredState)
+						// statusBar.SetText(fmt.Sprintf("Container %s started. Switched to Active view.", container.ID[:12]))
+					}
+					return nil
+				}
+			}
+			if event.Rune() == 'a' { // 'a' for auto-refresh toggle
+				if autoRefreshEnabled {
+					stopAutoRefreshFunc()
+				} else {
+					startAutoRefresh()
+				}
+				return nil // Consume the 'a' event
+			}
 		}
 		return event
 	})
@@ -166,4 +223,6 @@ func RunCLI(app *app.ContainerUseCase) {
 		fmt.Fprintf(os.Stderr, "Error running application: %v\n", err)
 		os.Exit(1)
 	}
+
+	defer stopAutoRefreshFunc()
 }
