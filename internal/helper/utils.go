@@ -15,11 +15,11 @@ func RefreshTable(
 	toggleState *tview.TextView,
 	table *tview.Table,
 	statusBar *tview.TextView,
-	app *app.ContainerUseCase,
+	app *app.ContainerUseCases,
 ) {
 
 	UpdateToggleText(containerState, toggleState)
-	containers, err := app.ListContainersByState(ctx, containerState)
+	containers, err := app.Query.ListContainersByState(ctx, containerState)
 	if err != nil {
 		statusBar.SetText(fmt.Sprintf("Error: %v", err))
 		return

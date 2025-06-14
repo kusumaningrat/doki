@@ -23,7 +23,9 @@ type Container struct {
 	Name    string
 }
 
-func RunCLI(app *app.ContainerUseCase) {
+type ContainerUseCases = app.ContainerUseCases
+
+func RunCLI(usecase *ContainerUseCases) {
 	tuiApp := tview.NewApplication()
 
 	var currentFilteredState string = "running"
@@ -39,7 +41,7 @@ func RunCLI(app *app.ContainerUseCase) {
 
 	refreshTable := func(state string) {
 		currentFilteredState = state
-		helper.RefreshTable(context.Background(), state, statusToggle, table, statusBar, app)
+		helper.RefreshTable(context.Background(), state, statusToggle, table, statusBar, usecase)
 	}
 
 	exitGuide := helper.ExitGuide()

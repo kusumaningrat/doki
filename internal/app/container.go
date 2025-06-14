@@ -9,8 +9,12 @@ type ContainerUseCase struct {
 	service domain.ContainerService
 }
 
-func NewContainerUseCase(service domain.ContainerService) *ContainerUseCase {
-	return &ContainerUseCase{service: service}
+func NewContainerUseCase(service domain.ContainerService) *ContainerUseCases {
+	useCase := &ContainerUseCase{service: service}
+	return &ContainerUseCases{
+		Query:   useCase,
+		Control: useCase,
+	}
 }
 
 func (u *ContainerUseCase) ListAllContainers(ctx context.Context) ([]domain.Container, error) {
@@ -38,4 +42,22 @@ func (u *ContainerUseCase) RestartContainer(ctx context.Context, id string) erro
 
 func (u *ContainerUseCase) RemoveContainer(ctx context.Context, id string) error {
 	return u.service.RemoveContainer(ctx, id)
+}
+
+type ContainerUseCases struct {
+	Query   ContainerQueryUseCase
+	Control ContainerControlUseCase
+}
+
+type ContainerQueryUseCase interface {
+	ListAllContainers(ctx context.Context) ([]domain.Container, error)
+	ListContainersByState(ctx context.Context, state string) ([]domain.Container, error)
+	GetContainerById(ctx context.Context, id string) (domain.Container, error)
+}
+
+type ContainerControlUseCase interface {
+	StartContainer(ctx context.Context, id string) error
+	StopContainer(ctx context.Context, id string) error
+	RestartContainer(ctx context.Context, id string) error
+	RemoveContainer(ctx context.Context, id string) error
 }
