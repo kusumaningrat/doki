@@ -40,8 +40,8 @@ func (u *ContainerUseCase) RestartContainer(ctx context.Context, id string) erro
 	return u.service.RestartContainer(ctx, id)
 }
 
-func (u *ContainerUseCase) RemoveContainer(ctx context.Context, id string) error {
-	return u.service.RemoveContainer(ctx, id)
+func (u *ContainerUseCase) RemoveContainer(ctx context.Context, id string, force bool) error {
+	return u.service.RemoveContainer(ctx, id, force)
 }
 
 type ContainerUseCases struct {
@@ -59,5 +59,5 @@ type ContainerControlUseCase interface {
 	StartContainer(ctx context.Context, id string) error
 	StopContainer(ctx context.Context, id string) error
 	RestartContainer(ctx context.Context, id string) error
-	RemoveContainer(ctx context.Context, id string) error
+	RemoveContainer(ctx context.Context, id string, force bool) error
 }

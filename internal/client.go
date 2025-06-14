@@ -115,8 +115,8 @@ func (d *DockerClient) RestartContainer(ctx context.Context, id string) error {
 	return d.cli.ContainerRestart(ctx, id, container.StopOptions{}) // Use ctx
 }
 
-func (d *DockerClient) RemoveContainer(ctx context.Context, id string) error {
-	return d.cli.ContainerRemove(ctx, id, container.RemoveOptions{}) // Use ctx
+func (d *DockerClient) RemoveContainer(ctx context.Context, id string, force bool) error {
+	return d.cli.ContainerRemove(ctx, id, container.RemoveOptions{Force: force}) // Use ctx
 }
 
 func (d *DockerClient) GetContainerById(ctx context.Context, id string) (domain.Container, error) {
