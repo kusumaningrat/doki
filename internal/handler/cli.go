@@ -4,6 +4,7 @@ import (
 	"context"
 	"docker-tui/internal/app"
 	"docker-tui/internal/domain"
+	"strings"
 	"time"
 
 	"fmt"
@@ -201,6 +202,73 @@ func RunCLI(usecase *ContainerUseCases) {
 
 						// refreshTable(currentFilteredState)
 						// statusBar.SetText(fmt.Sprintf("Container %s started. Switched to Active view.", container.ID[:12]))
+					}
+					return nil
+				}
+			}
+			if event.Rune() == 'r' {
+				if tuiApp.GetFocus() == table {
+					row, _ := table.GetSelection()
+					if row < 1 {
+						displayTimedStatus("No container selected (header row).", 2*time.Second)
+						return nil
+					}
+					cell := table.GetCell(row, 0)
+					if cell == nil {
+						displayTimedStatus("Error: Selected cell is nil.", 3*time.Second)
+						return nil
+					}
+					containerRef := cell.GetReference()
+					if containerRef == nil {
+						displayTimedStatus("No container reference found.", 3*time.Second)
+						return nil
+					}
+					container := containerRef.(*domain.Container)
+					err := usecase.Control.RestartContainer(context.Background(), container.ID)
+					if err != nil {
+						displayTimedStatus(fmt.Sprintf("Failed to restart: %v", err), 5*time.Second)
+					} else {
+						displayTimedStatus(fmt.Sprintf("Container %s restarted.", container.ID[:12]), 3*time.Second)
+						helper.UpdateToggleText(currentFilteredState, statusToggle)
+						refreshTable(currentFilteredState)
+
+					}
+					return nil
+				}
+			}
+			if event.Rune() == 'd' {
+				if tuiApp.GetFocus() == table {
+					row, _ := table.GetSelection()
+					if row < 1 {
+						displayTimedStatus("No container selected (header row).", 2*time.Second)
+						return nil
+					}
+					cell := table.GetCell(row, 0)
+					if cell == nil {
+						displayTimedStatus("Error: Selected cell is nil.", 3*time.Second)
+						return nil
+					}
+					containerRef := cell.GetReference()
+					if containerRef == nil {
+						displayTimedStatus("No container reference found.", 3*time.Second)
+						return nil
+					}
+					container := containerRef.(*domain.Container)
+					forceRemove := false
+					if strings.HasPrefix(container.Status, "Up") {
+						forceRemove = true
+						displayTimedStatus(fmt.Sprintf("Attempting to force remove running container %s...", container.ID[:12]), 2*time.Second)
+					} else {
+						displayTimedStatus(fmt.Sprintf("Attempting to remove stopped container %s...", container.ID[:12]), 2*time.Second)
+					}
+					err := usecase.Control.RemoveContainer(context.Background(), container.ID, forceRemove)
+					if err != nil {
+						displayTimedStatus(fmt.Sprintf("Failed to remove: %v", err), 5*time.Second)
+					} else {
+						displayTimedStatus(fmt.Sprintf("Container %s removed.", container.ID[:12]), 3*time.Second)
+						helper.UpdateToggleText(currentFilteredState, statusToggle)
+						refreshTable(currentFilteredState)
+
 					}
 					return nil
 				}
