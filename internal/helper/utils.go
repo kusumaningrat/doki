@@ -34,12 +34,6 @@ func PopulateContainerTableUI(
 			table.SetCell(rowIdx, 6, tview.NewTableCell(container.Name).SetAlign(tview.AlignLeft))
 		}
 	}
-
-	if len(containers) > 0 {
-		table.Select(1, 0)
-	} else {
-		table.Select(0, 0)
-	}
 }
 
 func TableFormat() *tview.Table {
