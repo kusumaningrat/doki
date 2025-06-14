@@ -20,7 +20,7 @@ type Container struct {
 	Created string
 	Status  string
 	Ports   string
-	Names   string
+	Name    string
 }
 
 func RunCLI(app *app.ContainerUseCase) {
@@ -28,96 +28,21 @@ func RunCLI(app *app.ContainerUseCase) {
 
 	var currentFilteredState string = "running"
 
-	table := tview.NewTable()
-	table.SetBorder(true)
-	table.SetSelectable(true, true)
-	table.SetFixed(1, 0)
+	table := helper.TableFormat()
 
-	headers := []string{
-		"CONTAINER ID", "IMAGE", "COMMAND", "CREATED", "STATUS", "PORTS", "NAMES",
-	}
-
-	table.SetTitle("Docker Container - CLI Based").SetTitleAlign(tview.AlignCenter)
-
-	for col, header := range headers {
-		table.SetCell(0, col,
-			tview.NewTableCell(header).
-				SetTextColor(tcell.ColorYellow).
-				SetAlign(tview.AlignCenter).
-				SetSelectable(false))
-	}
-
-	// containers, err := app.ListAllContainers(context.Background())
-	// containers, err := app.ListContainersByState(context.Background(), currentFilteredState)
-	// if err != nil {
-	// 	fmt.Printf("Failed to fetch containers data: %v\n", err)
-	// }
-
-	statusToggle := interface{}(tview.NewTextView()).(*tview.TextView)
-	statusToggle.SetDynamicColors(true).
-		SetTextAlign(tview.AlignCenter).
-		SetTextColor(tcell.ColorWhite).
-		SetBackgroundColor(tcell.ColorDarkBlue)
-
-	statusToggle.SetChangedFunc(func() {
-		tuiApp.Draw()
-	})
-	statusToggle.SetFocusFunc(func() {
-		statusToggle.SetBackgroundColor(tcell.ColorGray)
-	})
-	statusToggle.SetBlurFunc(func() {
-		statusToggle.SetBackgroundColor(tcell.ColorDarkBlue)
-	})
-
-	updateToggleText := func() {
-		if currentFilteredState == "running" {
-			statusToggle.SetText("[::b][green][ ACTIVE ][-:-:-] [white]INACTIVE")
-		} else if currentFilteredState == "exited" {
-			statusToggle.SetText("[white]ACTIVE [::b][red] [ INACTIVE ][-:-:-]")
-		} else {
-			statusToggle.SetText("dada")
-		}
-	}
+	statusToggle := helper.StatusToggle(tuiApp)
 
 	// Initialize UI
-	updateToggleText()
+	helper.UpdateToggleText(currentFilteredState, statusToggle)
 
-	statusBar := interface{}(tview.NewTextView()).(*tview.TextView)
-	statusBar.SetTextAlign(tview.AlignLeft).
-		SetTextColor(tcell.ColorWhite).
-		SetBackgroundColor(tcell.ColorDarkGray)
+	statusBar := helper.StatusBar()
 
 	refreshTable := func(state string) {
 		currentFilteredState = state
-		updateToggleText()
-
-		containers, err := app.ListContainersByState(context.Background(), currentFilteredState)
-		if err != nil {
-			statusBar.SetText(fmt.Sprintf("Error: %v", err))
-			return
-		}
-
-		// Clear old rows
-		for row := table.GetRowCount() - 1; row >= 1; row-- {
-			table.RemoveRow(row)
-		}
-
-		for rowNum, container := range containers {
-			rowIdx := rowNum + 1
-			table.SetCell(rowIdx, 0, tview.NewTableCell(container.ID[:12]).SetAlign(tview.AlignLeft).SetReference(&containers[rowNum]))
-			table.SetCell(rowIdx, 1, tview.NewTableCell(container.Image).SetAlign(tview.AlignLeft))
-			table.SetCell(rowIdx, 2, tview.NewTableCell(container.Command).SetAlign(tview.AlignLeft))
-			table.SetCell(rowIdx, 3, tview.NewTableCell(container.Created).SetAlign(tview.AlignLeft))
-			table.SetCell(rowIdx, 4, tview.NewTableCell(container.Status).SetAlign(tview.AlignLeft))
-			table.SetCell(rowIdx, 5, tview.NewTableCell(helper.FormatContainerPorts(container.Ports)).SetAlign(tview.AlignLeft))
-			table.SetCell(rowIdx, 6, tview.NewTableCell(container.Name).SetAlign(tview.AlignLeft))
-		}
+		helper.RefreshTable(context.Background(), state, statusToggle, table, statusBar, app)
 	}
 
-	exitGuide := tview.NewTextView().
-		SetText("Use arrow keys to navigate. Press 'q', ESC or Ctrl + C to quit.").
-		SetTextColor(tcell.ColorGreen).
-		SetTextAlign(tview.AlignCenter)
+	exitGuide := helper.ExitGuide()
 
 	flex := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(statusToggle, 1, 0, true).
