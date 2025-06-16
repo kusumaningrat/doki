@@ -27,4 +27,5 @@ type ContainerService interface {
 	StopContainer(ctx context.Context, id string) error
 	RestartContainer(ctx context.Context, id string) error
 	RemoveContainer(ctx context.Context, id string, force bool) error
+	ContainerInspect(ctx context.Context, id string) (string, error)
 }

@@ -3,6 +3,7 @@ package docker
 import (
 	"context" // Import context
 	"docker-tui/internal/domain"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/dustin/go-humanize"
+
+	"docker-tui/internal/helper"
 )
 
 type DockerClient struct {
@@ -148,4 +151,13 @@ func (d *DockerClient) GetContainerById(ctx context.Context, id string) (domain.
 		Ports:   ports,
 		Name:    strings.TrimPrefix(container.Name, "/"),
 	}, nil
+}
+
+func (d *DockerClient) ContainerInspect(ctx context.Context, id string) (string, error) {
+	_, jsonBytes, err := d.cli.ContainerInspectWithRaw(ctx, id, true)
+	if err != nil {
+		return "", fmt.Errorf("failed to inspect container %s: %w", id[:12], err)
+	}
+
+	return helper.PrettyJson(string(jsonBytes))
 }
