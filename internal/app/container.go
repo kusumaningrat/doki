@@ -44,6 +44,10 @@ func (u *ContainerUseCase) RemoveContainer(ctx context.Context, id string, force
 	return u.service.RemoveContainer(ctx, id, force)
 }
 
+func (u *ContainerUseCase) ContainerInspect(ctx context.Context, id string) (string, error) {
+	return u.service.ContainerInspect(ctx, id)
+}
+
 type ContainerUseCases struct {
 	Query   ContainerQueryUseCase
 	Control ContainerControlUseCase
@@ -53,6 +57,7 @@ type ContainerQueryUseCase interface {
 	ListAllContainers(ctx context.Context) ([]domain.Container, error)
 	ListContainersByState(ctx context.Context, state string) ([]domain.Container, error)
 	GetContainerById(ctx context.Context, id string) (domain.Container, error)
+	ContainerInspect(ctx context.Context, id string) (string, error)
 }
 
 type ContainerControlUseCase interface {
