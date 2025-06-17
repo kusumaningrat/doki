@@ -275,16 +275,19 @@ func RunCLI(usecase *ContainerUseCases) {
 								SetTitleAlign(tview.AlignCenter)
 
 							// Removed the problematic tview.NewModal().SetContent(textView) part.
-							closeButton := tview.NewButton("Close [Ctrl + C]").SetSelectedFunc(func() {
-								tuiApp.QueueUpdateDraw(func() {
-									pages.RemovePage("inspect_view")
-									tuiApp.SetFocus(table) // Return focus to the table
-								})
-							})
+							closeAction := func() {
+								pages.RemovePage("inspect_view")
+								tuiApp.SetFocus(table)
+							}
+							closeButton := tview.NewButton("Close").SetSelectedFunc(closeAction)
+
+							buttonContainer := tview.NewFlex().SetDirection(tview.FlexColumn).
+								AddItem(closeButton, 15, 0, true). // Adjust '15' for desired width.
+								AddItem(nil, 0, 1, false)
 
 							inspectContentFlex := tview.NewFlex().SetDirection(tview.FlexRow).
-								AddItem(textView, 0, 1, true).    // TextView takes most space
-								AddItem(closeButton, 1, 0, false) // Button at the bottom
+								AddItem(textView, 0, 1, true).        // TextView takes most space
+								AddItem(buttonContainer, 1, 0, false) // Button at the bottom
 
 							// This is the main Flex that acts as your modal's frame and centers it.
 							centeredModal := tview.NewFlex().
