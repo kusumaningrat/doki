@@ -3,8 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
-	"docker-tui/internal/app"
-	"docker-tui/internal/domain"
+
 	"encoding/json"
 	"strings"
 	"time"
@@ -12,7 +11,10 @@ import (
 	"fmt"
 	"os"
 
+	"docker-tui/internal/app"
+	"docker-tui/internal/domain"
 	"docker-tui/internal/helper"
+	"docker-tui/internal/ui"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -24,11 +26,18 @@ type ContainerUseCases = app.ContainerUseCases
 var tuiApp *tview.Application
 var pages *tview.Pages
 var table *tview.Table
-var mainAppLayout *tview.Flex // Your main app layout containing table, status bar, etc.
+
+// var mainAppLayout *tview.Flex // Your main app layout containing table, status bar, etc.
 
 var autoRefreshInterval = 3 * time.Second
 var autoRefreshEnabled = false
 var stopAutoRefresh chan struct{}
+
+const (
+	PageMainMenu      = "main_menu"
+	PageContainerList = "container_list"
+	PageInspectView   = "inspect_view" // Constant for the inspect modal page name
+)
 
 func RunCLI(usecase *ContainerUseCases) {
 	tuiApp = tview.NewApplication()
@@ -47,23 +56,15 @@ func RunCLI(usecase *ContainerUseCases) {
 
 	stopAutoRefresh = make(chan struct{})
 
-	// Function to display timed status messages in the status bar
-	displayTimedStatus := func(message string, duration time.Duration) {
-		statusBar.SetText(message)
-		go func() {
-			time.Sleep(duration)
-			tuiApp.QueueUpdateDraw(func() {
-				statusBar.SetText(defaultBarText)
-			})
-		}()
-	}
+	// Initialize pages
+	pages = tview.NewPages()
 
 	// Function to refresh the container table
 	refreshTable := func(state string) {
 		currentFilteredState = state
 		containers, err := usecase.Query.ListContainersByState(context.Background(), state)
 		if err != nil {
-			displayTimedStatus(fmt.Sprintf("Error fetching containers: %v", err), 3*time.Second)
+			helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Error fetching containers: %v", err), 3*time.Second, statusBar, defaultBarText)
 			return
 		}
 		helper.PopulateContainerTableUI(table, containers)
@@ -91,7 +92,11 @@ func RunCLI(usecase *ContainerUseCases) {
 				}
 			}
 		}()
-		displayTimedStatus(fmt.Sprintf("Auto-refresh enabled (every %s). Press 'a' to disable.", autoRefreshInterval), 3*time.Second)
+		helper.DisplayTimedStatus(
+			tuiApp,
+			fmt.Sprintf("Auto-refresh enabled (every %s). Press 'a' to disable.",
+				autoRefreshInterval),
+			3*time.Second, statusBar, defaultBarText)
 	}
 
 	stopAutoRefreshFunc := func() {
@@ -101,18 +106,21 @@ func RunCLI(usecase *ContainerUseCases) {
 		autoRefreshEnabled = false
 		close(stopAutoRefresh)
 		stopAutoRefresh = make(chan struct{})
-		displayTimedStatus("Auto-refresh disabled. Press 'a' to enable.", 3*time.Second)
+		helper.DisplayTimedStatus(
+			tuiApp,
+			"Auto-refresh disabled. Press 'a' to enable.",
+			3*time.Second,
+			statusBar,
+			defaultBarText,
+		)
 	}
 
-	// --- Main Application Layout and Pages Setup ---
-	mainAppLayout = tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(statusToggle, 1, 0, false).
-		AddItem(table, 0, 1, true). // Table is the primary focus of the main view
-		AddItem(statusBar, 1, 0, false).
-		AddItem(exitGuide, 1, 0, false)
+	mainMenuPage := ui.CreateMainMenu(tuiApp, pages, table)
+	containerListPage := ui.CreateContainerListPage(tuiApp, table, statusToggle, statusBar, exitGuide)
 
-	pages = tview.NewPages().
-		AddPage("main", mainAppLayout, true, true) // Add mainAppLayout as the initial page
+	pages.AddPage(PageMainMenu, mainMenuPage, true, true)
+	// Add the container list page, initially hidden
+	pages.AddPage(PageContainerList, containerListPage, true, false)
 
 	// Initial refresh and start auto-refresh
 	refreshTable(currentFilteredState)
@@ -126,15 +134,44 @@ func RunCLI(usecase *ContainerUseCases) {
 		}
 
 		// Main application input capture logic (only active when "main" page is front)
-		if currentPageName == "main" {
-			switch event.Key() {
+		switch currentPageName {
+		case PageMainMenu:
+			// fmt.Fprintf(os.Stderr, "DEBUG: Handling input for main menu.\n")
+			// For button-based menu, arrow keys/Tab/Enter are handled by tview.Flex and Buttons.
+			// Explicit 'Escape' to quit if 'q' is only handled by the button.
+			if event.Key() == tcell.KeyEscape || event.Rune() == 'q' {
+				tuiApp.Stop()
+				return nil // Consume event
+			}
+			return event // Propagate to mainMenuPage for its internal handling
+
+		case PageContainerList:
+			// fmt.Fprintf(os.Stderr, "DEBUG: Handling input for container list.\n")
+			// Handle keys to go back to the Main Menu
+			if event.Rune() == 'm' { // 'm' for Menu
+				tuiApp.QueueUpdateDraw(func() {
+					pages.SwitchToPage(PageMainMenu)
+					tuiApp.SetFocus(mainMenuPage) // Set focus back to the menu list
+				})
+				return nil // Consume event
+			}
+			// Add 'Escape' as an additional way to go back from container list to main menu
+			if event.Key() == tcell.KeyEscape {
+				tuiApp.QueueUpdateDraw(func() {
+					pages.SwitchToPage(PageMainMenu)
+					tuiApp.SetFocus(mainMenuPage)
+				})
+				return nil
+			}
+
+			switch event.Key() { // This switch handles tcell.Key constants (Tab, Enter)
 			case tcell.KeyTab:
 				if tuiApp.GetFocus() == statusToggle {
 					tuiApp.SetFocus(table)
-					displayTimedStatus("Focus: table", 1*time.Second)
+					helper.DisplayTimedStatus(tuiApp, "Focus: table", 1*time.Second, statusBar, defaultBarText)
 				} else {
 					tuiApp.SetFocus(statusToggle)
-					displayTimedStatus("Focus: statusToggle", 1*time.Second)
+					helper.DisplayTimedStatus(tuiApp, "Focus: statusToggle", 1*time.Second, statusBar, defaultBarText)
 				}
 				return nil
 			case tcell.KeyEnter:
@@ -144,12 +181,12 @@ func RunCLI(usecase *ContainerUseCases) {
 					} else {
 						refreshTable("running")
 					}
-					displayTimedStatus(fmt.Sprintf("Switched to: %s", currentFilteredState), 2*time.Second)
+					helper.DisplayTimedStatus(
+						tuiApp,
+						fmt.Sprintf("Switched to: %s", currentFilteredState),
+						2*time.Second, statusBar, defaultBarText)
 					return nil
 				}
-			case tcell.KeyEscape, tcell.KeyCtrlC: // Global app exit
-				tuiApp.Stop()
-				return nil
 			default:
 				if event.Rune() == 'q' { // 'q' to quit (main app)
 					tuiApp.Stop()
@@ -159,12 +196,12 @@ func RunCLI(usecase *ContainerUseCases) {
 				if tuiApp.GetFocus() == table {
 					row, _ := table.GetSelection()
 					if row < 1 { // Header row check
-						displayTimedStatus("No container selected (header row).", 2*time.Second)
+						helper.DisplayTimedStatus(tuiApp, "No container selected (header row).", 2*time.Second, statusBar, defaultBarText)
 						return nil
 					}
 					cell := table.GetCell(row, 0)
 					if cell == nil || cell.GetReference() == nil {
-						displayTimedStatus("Error: No container reference found.", 3*time.Second)
+						helper.DisplayTimedStatus(tuiApp, "Error: No container reference found.", 3*time.Second, statusBar, defaultBarText)
 						return nil
 					}
 					container := cell.GetReference().(*domain.Container)
@@ -173,9 +210,9 @@ func RunCLI(usecase *ContainerUseCases) {
 					case 's': // Start container
 						err := usecase.Control.StartContainer(context.Background(), container.ID)
 						if err != nil {
-							displayTimedStatus(fmt.Sprintf("Failed to start: %v", err), 5*time.Second)
+							helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Failed to start: %v", err), 5*time.Second, statusBar, defaultBarText)
 						} else {
-							displayTimedStatus(fmt.Sprintf("Container %s started. Switched to Active view.", container.ID[:12]), 3*time.Second)
+							helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Container %s started. Switched to Active view.", container.ID[:12]), 3*time.Second, statusBar, defaultBarText)
 							currentFilteredState = "running"
 							helper.UpdateToggleText(currentFilteredState, statusToggle)
 							refreshTable(currentFilteredState)
@@ -184,9 +221,9 @@ func RunCLI(usecase *ContainerUseCases) {
 					case 'x': // Stop container
 						err := usecase.Control.StopContainer(context.Background(), container.ID)
 						if err != nil {
-							displayTimedStatus(fmt.Sprintf("Failed to stop: %v", err), 5*time.Second)
+							helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Failed to stop: %v", err), 5*time.Second, statusBar, defaultBarText)
 						} else {
-							displayTimedStatus(fmt.Sprintf("Container %s stopped.", container.ID[:12]), 3*time.Second)
+							helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Container %s stopped.", container.ID[:12]), 3*time.Second, statusBar, defaultBarText)
 							helper.UpdateToggleText(currentFilteredState, statusToggle)
 							refreshTable(currentFilteredState)
 						}
@@ -194,9 +231,9 @@ func RunCLI(usecase *ContainerUseCases) {
 					case 'r': // Restart container
 						err := usecase.Control.RestartContainer(context.Background(), container.ID)
 						if err != nil {
-							displayTimedStatus(fmt.Sprintf("Failed to restart: %v", err), 5*time.Second)
+							helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Failed to restart: %v", err), 5*time.Second, statusBar, defaultBarText)
 						} else {
-							displayTimedStatus(fmt.Sprintf("Container %s restarted.", container.ID[:12]), 3*time.Second)
+							helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Container %s restarted.", container.ID[:12]), 3*time.Second, statusBar, defaultBarText)
 							helper.UpdateToggleText(currentFilteredState, statusToggle)
 							refreshTable(currentFilteredState)
 						}
@@ -204,28 +241,25 @@ func RunCLI(usecase *ContainerUseCases) {
 					case 'd': // Remove container
 						forceRemove := strings.HasPrefix(container.Status, "Up")
 						if forceRemove {
-							displayTimedStatus(fmt.Sprintf("Attempting to force remove running container %s...", container.ID[:12]), 2*time.Second)
+							helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Attempting to force remove running container %s...", container.ID[:12]), 2*time.Second, statusBar, defaultBarText)
 						} else {
-							displayTimedStatus(fmt.Sprintf("Attempting to remove stopped container %s...", container.ID[:12]), 2*time.Second)
+							helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Attempting to remove stopped container %s...", container.ID[:12]), 2*time.Second, statusBar, defaultBarText)
 						}
 						err := usecase.Control.RemoveContainer(context.Background(), container.ID, forceRemove)
 						if err != nil {
-							displayTimedStatus(fmt.Sprintf("Failed to remove: %v", err), 5*time.Second)
+							helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Failed to remove: %v", err), 5*time.Second, statusBar, defaultBarText)
 						} else {
-							displayTimedStatus(fmt.Sprintf("Container %s removed.", container.ID[:12]), 3*time.Second)
+							helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Container %s removed.", container.ID[:12]), 3*time.Second, statusBar, defaultBarText)
 							helper.UpdateToggleText(currentFilteredState, statusToggle)
 							refreshTable(currentFilteredState)
 						}
 						return nil
-
 					case 'i': // Inspect container - opens the modal
-						// displayTimedStatus(fmt.Sprintf("Inspecting container %s...", container.ID[:12]), 2*time.Second)
 						go func() {
 							defer func() {
 								if r := recover(); r != nil {
-									// fmt.Fprintf(os.Stderr, "DEBUG: Recovered from panic in inspect goroutine: %v\n", r)
 									tuiApp.QueueUpdateDraw(func() {
-										displayTimedStatus(fmt.Sprintf("Internal error: %v", r), 5*time.Second)
+										helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Internal error: %v", r), 5*time.Second, statusBar, defaultBarText)
 										if currentPageName, _ := pages.GetFrontPage(); currentPageName == "inspect_view" {
 											pages.RemovePage("inspect_view")
 										}
@@ -235,26 +269,25 @@ func RunCLI(usecase *ContainerUseCases) {
 							}()
 
 							cID := container.ID
-							ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // Increased timeout
+							ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 							defer cancel()
 
 							inspectRaw, err := usecase.Query.ContainerInspect(ctx, cID)
 							if err != nil {
 								fmt.Fprintf(os.Stderr, "DEBUG: Failed to inspect container: %v\n", err)
-								tuiApp.QueueUpdateDraw(func() { // IMPORTANT: Ensure UI update for error
-									displayTimedStatus(fmt.Sprintf("Inspect error: %v", err), 7*time.Second) // Longer display for error
-									tuiApp.SetFocus(table)                                                   // Ensure focus returns to main table
+								tuiApp.QueueUpdateDraw(func() {
+									helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Inspect error: %v", err), 7*time.Second, statusBar, defaultBarText)
+									tuiApp.SetFocus(table)
 								})
-								return // Stop processing if Docker inspect fails
+								return
 							}
 
 							var pretty bytes.Buffer
 							err = json.Indent(&pretty, []byte(inspectRaw), "", "  ")
 							if err != nil {
-								// fmt.Fprintf(os.Stderr, "DEBUG: Failed to format JSON: %v\n", err)
-								pretty.WriteString(inspectRaw) // fallback to raw
+								pretty.WriteString(inspectRaw)
 								tuiApp.QueueUpdateDraw(func() {
-									displayTimedStatus("JSON format error; showing raw data.", 3*time.Second)
+									helper.DisplayTimedStatus(tuiApp, "JSON format error; showing raw data.", 3*time.Second, statusBar, defaultBarText)
 								})
 							}
 							textView := tview.NewTextView().
@@ -307,6 +340,19 @@ func RunCLI(usecase *ContainerUseCases) {
 							})
 						}()
 						return nil // Consume 'i' event for the main table
+					}
+				}
+
+				if currentPageName == PageContainerList {
+					if event.Rune() == 'm' { // 'm' for Menu
+						pages.SwitchToPage(PageMainMenu)
+						tuiApp.SetFocus(mainMenuPage)
+						return nil
+					}
+					if event.Key() == tcell.KeyEscape {
+						pages.SwitchToPage(PageMainMenu)
+						tuiApp.SetFocus(mainMenuPage)
+						return nil
 					}
 				}
 
