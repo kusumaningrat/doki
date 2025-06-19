@@ -62,7 +62,48 @@ func PopulateContainerTableUI(
 	}
 }
 
-func TableFormat() *tview.Table {
+func PopulateImageTableUI(table *tview.Table, images []domain.Image) {
+	for row := table.GetRowCount() - 1; row >= 1; row-- {
+		table.RemoveRow(row)
+	}
+
+	if len(images) == 0 {
+		// Center "No images" message visually
+		table.SetCell(1, 0, tview.NewTableCell("No images found.").
+			SetSelectable(false).
+			SetTextColor(tcell.ColorYellow).
+			SetAlign(tview.AlignCenter).
+			SetExpansion(7))
+		for col := 1; col < table.GetColumnCount(); col++ { // Clear other cells in the row
+			table.SetCell(1, col, tview.NewTableCell(""))
+		}
+	} else {
+		for rowNum, image := range images {
+			rowIdx := rowNum + 1 // +1 for the header row
+			table.SetCell(
+				rowIdx, 0,
+				tview.NewTableCell(image.ImageID[:12]).
+					SetAlign(tview.AlignLeft).
+					SetReference(&image).
+					SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorDarkCyan)))
+			table.SetCell(rowIdx, 1, tview.NewTableCell(image.Repository).SetAlign(tview.AlignLeft))
+			table.SetCell(
+				rowIdx, 2,
+				tview.NewTableCell(image.Size).
+					SetAlign(tview.AlignLeft))
+			table.SetCell(
+				rowIdx, 3,
+				tview.NewTableCell(image.Created).
+					SetAlign(tview.AlignLeft))
+			table.SetCell(
+				rowIdx, 4,
+				tview.NewTableCell(image.Tag).
+					SetAlign(tview.AlignLeft))
+		}
+	}
+}
+
+func ContainerTableFormat() *tview.Table {
 	table := tview.NewTable()
 	table.SetBorder(true)
 	table.SetSelectable(true, true)
@@ -70,6 +111,33 @@ func TableFormat() *tview.Table {
 
 	headers := []string{
 		"CONTAINER ID", "IMAGE", "COMMAND", "CREATED", "STATUS", "PORTS", "NAMES",
+	}
+
+	table.SetTitle("Docker Container - CLI Based").SetTitleAlign(tview.AlignCenter)
+
+	for col, header := range headers {
+		table.SetCell(0, col,
+			tview.NewTableCell(header).
+				SetTextColor(tcell.ColorYellow).
+				SetAlign(tview.AlignCenter).
+				SetSelectable(false))
+	}
+
+	return table
+}
+
+func ImageTableFormat() *tview.Table {
+	table := tview.NewTable()
+	table.SetBorder(true)
+	table.SetSelectable(true, true)
+	table.SetFixed(1, 0)
+
+	headers := []string{
+		"IMAGE ID",   // Col 0
+		"REPOSITORY", // Col 1
+		"SIZE",       // Col 2
+		"CREATED",    // Col 3
+		"TAG",        // Col 4
 	}
 
 	table.SetTitle("Docker Container - CLI Based").SetTitleAlign(tview.AlignCenter)

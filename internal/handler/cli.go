@@ -9,6 +9,7 @@ import (
 	"docker-tui/internal/app"
 	"docker-tui/internal/helper"
 	"docker-tui/internal/ui/containers"
+	"docker-tui/internal/ui/images"
 	"docker-tui/internal/ui/menu"
 
 	"github.com/gdamore/tcell/v2"
@@ -17,12 +18,14 @@ import (
 
 type AppUseCases struct {
 	Containers *app.ContainerUseCases
+	Images     *app.ImageUseCases
 }
 
 // Global variables for tview components (accessible across RunCLI and its closures)
 var tuiApp *tview.Application
 var pages *tview.Pages
 var containerTable *tview.Table
+var imageTable *tview.Table
 
 // var mainAppLayout *tview.Flex // Your main app layout containing table, status bar, etc.
 
@@ -33,6 +36,7 @@ var stopAutoRefresh chan struct{}
 const (
 	PageMainMenu      = "main_menu"
 	PageContainerList = "container_list"
+	PageImageList     = "image_list"
 	PageInspectView   = "inspect_view" // Constant for the inspect modal page name
 )
 
@@ -42,7 +46,8 @@ func RunCLI(usecases *AppUseCases) {
 	var currentContainerFilterState string = "running"
 	const defaultBarText = ""
 
-	containerTable = helper.TableFormat() // Initialize the table
+	containerTable = helper.ContainerTableFormat()
+	imageTable = helper.ImageTableFormat()
 
 	statusToggle := helper.StatusToggle(tuiApp)
 	statusBar := helper.StatusBar()
@@ -61,18 +66,7 @@ func RunCLI(usecases *AppUseCases) {
 	}
 
 	var refreshContainerTable func(state string)
-
-	// Function to refresh the container table
-	// refreshContainerTable := func(state string) {
-	// 	currentContainerFilterState = state
-	// 	containers, err := usecases.Containers.Query.ListContainersByState(context.Background(), state)
-	// 	if err != nil {
-	// 		helper.DisplayTimedStatus(tuiApp, fmt.Sprintf("Error fetching containers: %v", err), 3*time.Second, statusBar, defaultBarText)
-	// 		return
-	// 	}
-	// 	helper.PopulateContainerTableUI(containerTable, containers)
-	// 	helper.UpdateToggleText(state, statusToggle)
-	// }
+	var refreshImageTable func()
 
 	// Functions for auto-refresh
 	startAutoRefresh := func() {
@@ -119,13 +113,10 @@ func RunCLI(usecases *AppUseCases) {
 	}
 
 	closeInspectModal := func() {
-		fmt.Fprintf(os.Stderr, "DEBUG: Attempting to close inspect_view.\n")
-		fmt.Fprintf(os.Stderr, "DEBUG: Inside QueueUpdateDraw for closing inspect_view (before remove).\n")
 		pages.RemovePage(PageInspectView)
 		tuiApp.SetFocus(containerTable) // Always return focus to the container table after inspect
-		fmt.Fprintf(os.Stderr, "DEBUG: inspect_view removed, focus set to table.\n")
 	}
-	mainMenuPage := menu.CreateMainMenu(tuiApp, pages, containerTable, displayTimedStatus)
+	mainMenuPage := menu.CreateMainMenu(tuiApp, pages, containerTable, imageTable, displayTimedStatus)
 
 	containerPageConfig := containers.Config{
 		App:                   tuiApp,
@@ -142,14 +133,28 @@ func RunCLI(usecases *AppUseCases) {
 		StopAutoRefreshFunc:   stopAutoRefreshFunc,
 	}
 
-	containerListPage := containers.NewContainerListPage(containerPageConfig) // NewContainerListPage now defines its own refreshTableFunc
+	imageConfig := images.Config{
+		App:                  tuiApp,
+		Pages:                pages,
+		Table:                imageTable,
+		DisplayStatus:        displayTimedStatus,
+		StartAutoRefreshFunc: startAutoRefresh, // Pass auto-refresh controls
+		StopAutoRefreshFunc:  stopAutoRefreshFunc,
+		UseCases:             usecases.Images,
+	}
+
+	containerListPage := containers.NewContainerListPage(containerPageConfig)
+	imageListPage := images.NewImageListPage(imageConfig)
 
 	pages.AddPage(PageMainMenu, mainMenuPage, true, true)
 	pages.AddPage(PageContainerList, containerListPage, true, false)
+	pages.AddPage(PageImageList, imageListPage, true, false)
 
 	refreshContainerTable = containerListPage.RefreshTable
+	refreshImageTable = imageListPage.RefreshTable
 	// Initial refresh and start auto-refresh
 	refreshContainerTable(currentContainerFilterState)
+	refreshImageTable()
 	startAutoRefresh()
 
 	tuiApp.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -166,6 +171,10 @@ func RunCLI(usecases *AppUseCases) {
 		case PageContainerList:
 			// Delegate input handling to the ContainerListPage's specific method
 			return containerListPage.HandleInput(event)
+
+		case PageImageList:
+			// Delegate input handling to the ContainerListPage's specific method
+			return imageListPage.HandleInput(event)
 
 		case PageInspectView: // Handle keys specifically for the inspect modal
 			switch event.Key() {

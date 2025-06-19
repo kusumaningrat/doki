@@ -11,13 +11,15 @@ import (
 const (
 	PageMainMenu      = "main_menu"
 	PageContainerList = "container_list"
+	PageImageList     = "image_list"
 	PageInspectView   = "inspect_view"
 )
 
 func CreateMainMenu(
 	app *tview.Application,
 	p *tview.Pages,
-	containerTable *tview.Table, // Only containerTable needed now
+	containerTable *tview.Table, // Rename to be explicit
+	imageTable *tview.Table,
 	displayTimedStatus func(message string, duration time.Duration,
 	)) *tview.Flex {
 
@@ -50,7 +52,8 @@ func CreateMainMenu(
 	})
 
 	imagesButton := createCenteredButton("Images", func() {
-		helper.DisplayTimedStatus(app, "Images page (not implemented yet)", 2*time.Second, nil, "")
+		p.SwitchToPage(PageImageList)
+		app.SetFocus(imageTable)
 	})
 
 	volumesButton := createCenteredButton("Volumes", func() {

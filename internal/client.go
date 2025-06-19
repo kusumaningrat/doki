@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/dustin/go-humanize"
 
@@ -160,4 +161,36 @@ func (d *DockerClient) ContainerInspect(ctx context.Context, id string) (string,
 	}
 
 	return helper.PrettyJson(string(jsonBytes))
+}
+
+func (d *DockerClient) ListAllImages(ctx context.Context) ([]domain.Image, error) { // Added error return
+	images, err := d.cli.ImageList(ctx, image.ListOptions{})
+	if err != nil {
+		return nil, err // Return error here
+	}
+
+	result := make([]domain.Image, 0, len(images))
+	for _, img := range images { // Renamed 'image' to 'img' to avoid conflict with 'image' package
+		repository := "<none>"
+		tag := "<none>"
+
+		if len(img.RepoTags) > 0 {
+			// RepoTags usually contains "repository:tag"
+			repoTag := img.RepoTags[0] // Take the first tag
+			parts := strings.SplitN(repoTag, ":", 2)
+			repository = parts[0]
+			if len(parts) > 1 {
+				tag = parts[1]
+			}
+		}
+
+		result = append(result, domain.Image{
+			Repository: repository,
+			Tag:        tag,
+			ImageID:    img.ID[7:19], // Shorten image ID for display
+			Created:    humanize.Time(time.Unix(img.Created, 0)),
+			Size:       humanize.Bytes(uint64(img.Size)),
+		})
+	}
+	return result, nil // Return nil for error
 }
