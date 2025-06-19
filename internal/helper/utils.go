@@ -83,22 +83,23 @@ func PopulateImageTableUI(table *tview.Table, images []domain.Image) {
 			table.SetCell(
 				rowIdx, 0,
 				tview.NewTableCell(image.ImageID[:12]).
-					SetAlign(tview.AlignLeft).
+					SetAlign(tview.AlignCenter).
 					SetReference(&image).
 					SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorDarkCyan)))
-			table.SetCell(rowIdx, 1, tview.NewTableCell(image.Repository).SetAlign(tview.AlignLeft))
+			table.SetCell(rowIdx, 1, tview.NewTableCell(image.Repository).
+				SetAlign(tview.AlignLeft))
 			table.SetCell(
 				rowIdx, 2,
 				tview.NewTableCell(image.Size).
-					SetAlign(tview.AlignLeft))
+					SetAlign(tview.AlignCenter))
 			table.SetCell(
 				rowIdx, 3,
 				tview.NewTableCell(image.Created).
-					SetAlign(tview.AlignLeft))
+					SetAlign(tview.AlignCenter))
 			table.SetCell(
 				rowIdx, 4,
 				tview.NewTableCell(image.Tag).
-					SetAlign(tview.AlignLeft))
+					SetAlign(tview.AlignCenter))
 		}
 	}
 }
