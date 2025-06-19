@@ -80,26 +80,26 @@ func PopulateImageTableUI(table *tview.Table, images []domain.Image) {
 	} else {
 		for rowNum, image := range images {
 			rowIdx := rowNum + 1 // +1 for the header row
-			table.SetCell(
-				rowIdx, 0,
-				tview.NewTableCell(image.ImageID[:12]).
-					SetAlign(tview.AlignCenter).
-					SetReference(&image).
-					SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorDarkCyan)))
-			table.SetCell(rowIdx, 1, tview.NewTableCell(image.Repository).
+			table.SetCell(rowIdx, 0, tview.NewTableCell(image.Repository).
+				SetReference(&image).
 				SetAlign(tview.AlignLeft))
 			table.SetCell(
+				rowIdx, 1,
+				tview.NewTableCell(image.Tag).
+					SetAlign(tview.AlignLeft))
+			table.SetCell(
 				rowIdx, 2,
-				tview.NewTableCell(image.Size).
-					SetAlign(tview.AlignCenter))
+				tview.NewTableCell(image.ImageID[:12]).
+					SetAlign(tview.AlignLeft).
+					SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorDarkCyan)))
 			table.SetCell(
 				rowIdx, 3,
 				tview.NewTableCell(image.Created).
-					SetAlign(tview.AlignCenter))
+					SetAlign(tview.AlignLeft))
 			table.SetCell(
 				rowIdx, 4,
-				tview.NewTableCell(image.Tag).
-					SetAlign(tview.AlignCenter))
+				tview.NewTableCell(image.Size).
+					SetAlign(tview.AlignLeft))
 		}
 	}
 }
@@ -134,11 +134,11 @@ func ImageTableFormat() *tview.Table {
 	table.SetFixed(1, 0)
 
 	headers := []string{
-		"IMAGE ID",   // Col 0
 		"REPOSITORY", // Col 1
-		"SIZE",       // Col 2
-		"CREATED",    // Col 3
 		"TAG",        // Col 4
+		"IMAGE ID",   // Col 0
+		"CREATED",    // Col 3
+		"SIZE",       // Col 2
 	}
 
 	table.SetTitle("Docker Container - CLI Based").SetTitleAlign(tview.AlignCenter)
@@ -147,7 +147,7 @@ func ImageTableFormat() *tview.Table {
 		table.SetCell(0, col,
 			tview.NewTableCell(header).
 				SetTextColor(tcell.ColorYellow).
-				SetAlign(tview.AlignCenter).
+				SetAlign(tview.AlignLeft).
 				SetSelectable(false))
 	}
 
