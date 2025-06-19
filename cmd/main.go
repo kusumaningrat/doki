@@ -14,6 +14,9 @@ func main() {
 	}
 
 	containerUseCase := app.NewContainerUseCase(dockerClient)
+	appUseCases := &handler.AppUseCases{
+		Containers: containerUseCase,
+	}
 
-	handler.RunCLI(containerUseCase)
+	handler.RunCLI(appUseCases)
 }

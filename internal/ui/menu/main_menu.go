@@ -1,4 +1,4 @@
-package ui
+package menu
 
 import (
 	"docker-tui/internal/helper"
@@ -17,7 +17,9 @@ const (
 func CreateMainMenu(
 	app *tview.Application,
 	p *tview.Pages,
-	table *tview.Table) *tview.Flex {
+	containerTable *tview.Table, // Only containerTable needed now
+	displayTimedStatus func(message string, duration time.Duration,
+	)) *tview.Flex {
 
 	headerTextView := tview.NewTextView().
 		SetTextAlign(tview.AlignCenter).
@@ -30,8 +32,6 @@ func CreateMainMenu(
 			selectedFunc() // This is your original p.SwitchToPage(PageContainerList) etc.
 		})
 
-		// Calculate a reasonable fixed width for the button based on its text.
-		// `len(text) + 4` usually accounts for text + 2 spaces padding + 2 border chars.
 		buttonWidth := len(text) + 4
 		if buttonWidth < 20 { // Ensure a minimum reasonable width for consistency, adjust as needed
 			buttonWidth = 20
@@ -46,7 +46,7 @@ func CreateMainMenu(
 
 	containersButton := createCenteredButton("Containers", func() {
 		p.SwitchToPage(PageContainerList)
-		app.SetFocus(table)
+		app.SetFocus(containerTable)
 	})
 
 	imagesButton := createCenteredButton("Images", func() {
@@ -61,8 +61,6 @@ func CreateMainMenu(
 		app.Stop()
 	})
 
-	// 2. Create a Flex container to hold the buttons
-	//    This will arrange them vertically
 	menuFlex := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(tview.NewBox(), 0, 1, false). // Top Spacer (flexible height)
 		AddItem(headerTextView, 1, 0, false).
