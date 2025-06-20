@@ -33,7 +33,9 @@ var imageTable *tview.Table
 var volumeTable *tview.Table
 var networkTable *tview.Table
 
-// var mainAppLayout *tview.Flex // Your main app layout containing table, status bar, etc.
+var LastActiveTable tview.Primitive
+
+var lastFocusedPrimitive tview.Primitive
 
 var autoRefreshInterval = 3 * time.Second
 var autoRefreshEnabled = false
@@ -81,6 +83,10 @@ func RunCLI(usecases *AppUseCases) {
 	var refreshVolumeTable func()
 	var refreshNetworkTable func()
 
+	setLastFocusedPrimitive := func(p tview.Primitive) {
+		lastFocusedPrimitive = p
+	}
+
 	// Functions for auto-refresh
 	startAutoRefresh := func() {
 		if autoRefreshEnabled {
@@ -98,6 +104,18 @@ func RunCLI(usecases *AppUseCases) {
 					if currentPageName == PageContainerList {
 						if refreshContainerTable != nil {
 							refreshContainerTable(currentContainerFilterState)
+						}
+					} else if currentPageName == PageImageList {
+						if refreshImageTable != nil {
+							refreshImageTable()
+						}
+					} else if currentPageName == PageVolumeList {
+						if refreshVolumeTable != nil {
+							refreshVolumeTable()
+						}
+					} else if currentPageName == PageNetworkList {
+						if refreshNetworkTable != nil {
+							refreshNetworkTable()
 						}
 					}
 				case <-stopAutoRefresh:
@@ -125,8 +143,7 @@ func RunCLI(usecases *AppUseCases) {
 	}
 
 	closeInspectModal := func() {
-		pages.RemovePage(PageInspectView)
-		tuiApp.SetFocus(containerTable) // Always return focus to the container table after inspect
+		helper.CloseModal(tuiApp, pages, PageInspectView, lastFocusedPrimitive)
 	}
 
 	containerPageConfig := containers.Config{
@@ -142,6 +159,7 @@ func RunCLI(usecases *AppUseCases) {
 		CloseInspectModalFunc: closeInspectModal,            // Pass the modal close function
 		StartAutoRefreshFunc:  startAutoRefresh,             // Pass auto-refresh controls
 		StopAutoRefreshFunc:   stopAutoRefreshFunc,
+		SetFocusOnCloseModal:  setLastFocusedPrimitive,
 	}
 
 	imageConfig := images.Config{
@@ -154,6 +172,7 @@ func RunCLI(usecases *AppUseCases) {
 		StartAutoRefreshFunc: startAutoRefresh, // Pass auto-refresh controls
 		StopAutoRefreshFunc:  stopAutoRefreshFunc,
 		UseCases:             usecases.Images,
+		SetFocusOnCloseModal: setLastFocusedPrimitive,
 	}
 
 	volumeConfig := volumes.Config{
@@ -166,6 +185,7 @@ func RunCLI(usecases *AppUseCases) {
 		StartAutoRefreshFunc: startAutoRefresh,
 		StopAutoRefreshFunc:  stopAutoRefreshFunc,
 		UseCases:             usecases.Volumes,
+		SetFocusOnCloseModal: setLastFocusedPrimitive,
 	}
 
 	networkConfig := networks.Config{
@@ -178,6 +198,7 @@ func RunCLI(usecases *AppUseCases) {
 		StartAutoRefreshFunc: startAutoRefresh,
 		StopAutoRefreshFunc:  stopAutoRefreshFunc,
 		UseCases:             usecases.Networks,
+		SetFocusOnCloseModal: setLastFocusedPrimitive,
 	}
 	mainMenuPage := menu.CreateMainMenu(
 		tuiApp,

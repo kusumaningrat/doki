@@ -32,6 +32,7 @@ type Config struct {
 	DisplayStatus        func(message string, duration time.Duration)
 	StartAutoRefreshFunc func()
 	StopAutoRefreshFunc  func()
+	SetFocusOnCloseModal func(tview.Primitive)
 }
 
 type VolumeListPage struct {
@@ -160,6 +161,7 @@ func (p *VolumeListPage) HandleInput(
 						return
 					}
 
+					p.config.SetFocusOnCloseModal(p.config.Table)
 					// Create the inspect modal content and add it as a new page
 					inspectModalContent := inspect.CreateInspectModal(p.config.App, p.config.Pages, p.config.Table, inspectRaw, selectedVolume.Name, p.config.DisplayStatus)
 

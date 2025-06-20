@@ -283,3 +283,10 @@ func PrettyJson(data string) (string, error) {
 	}
 	return prettyJSON.String(), nil
 }
+
+func CloseModal(app *tview.Application, pages *tview.Pages, pageName string, focusPrimitive tview.Primitive) {
+	pages.RemovePage(pageName)
+	if focusPrimitive != nil {
+		app.SetFocus(focusPrimitive)
+	}
+}

@@ -32,6 +32,7 @@ type Config struct {
 	DisplayStatus        func(message string, duration time.Duration)
 	StartAutoRefreshFunc func() // If image list also supports auto-refresh
 	StopAutoRefreshFunc  func()
+	SetFocusOnCloseModal func(tview.Primitive)
 }
 
 type ImageListPage struct {
@@ -169,11 +170,11 @@ func (p *ImageListPage) HandleInput(
 						}
 					}()
 
-					ImageID := selectedImage.ImageID
+					ImageRepository := selectedImage.Repository
 					ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 					defer cancel()
 
-					inspectRaw, err := p.config.UseCases.Query.ImageInspect(ctx, ImageID)
+					inspectRaw, err := p.config.UseCases.Query.ImageInspect(ctx, ImageRepository)
 					if err != nil {
 						p.config.App.QueueUpdateDraw(func() {
 							p.config.DisplayStatus(fmt.Sprintf("Inspect error: %v", err), 7*time.Second)
@@ -182,8 +183,9 @@ func (p *ImageListPage) HandleInput(
 						return
 					}
 
+					p.config.SetFocusOnCloseModal(p.config.Table)
 					// Create the inspect modal content and add it as a new page
-					inspectModalContent := inspect.CreateInspectModal(p.config.App, p.config.Pages, p.config.Table, inspectRaw, selectedImage.Repository, p.config.DisplayStatus)
+					inspectModalContent := inspect.CreateInspectModal(p.config.App, p.config.Pages, p.config.Table, inspectRaw, ImageRepository, p.config.DisplayStatus)
 
 					p.config.App.QueueUpdateDraw(func() {
 						p.config.Pages.AddPage(PageInspectView, inspectModalContent, true, true)
@@ -192,7 +194,6 @@ func (p *ImageListPage) HandleInput(
 				}(image) // Pass the selected container to the goroutine
 				return nil
 			}
-
 		}
 	}
 	return event

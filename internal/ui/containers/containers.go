@@ -35,6 +35,7 @@ type Config struct {
 	StartAutoRefreshFunc  func()
 	StopAutoRefreshFunc   func()
 	AutoRefreshEnabled    bool
+	SetFocusOnCloseModal  func(tview.Primitive)
 }
 
 type ContainerListPage struct {
@@ -222,6 +223,7 @@ func (p *ContainerListPage) HandleInput(event *tcell.EventKey) *tcell.EventKey {
 					}
 
 					// Create the inspect modal content and add it as a new page
+					p.config.SetFocusOnCloseModal(p.config.Table)
 					inspectModalContent := inspect.CreateInspectModal(p.config.App, p.config.Pages, p.config.Table, inspectRaw, selectedContainer.Name, p.config.DisplayStatus)
 
 					p.config.App.QueueUpdateDraw(func() {
