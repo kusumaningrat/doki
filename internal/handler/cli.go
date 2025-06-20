@@ -96,7 +96,6 @@ func RunCLI(usecases *AppUseCases) {
 				case <-ticker.C:
 					currentPageName, _ := pages.GetFrontPage()
 					if currentPageName == PageContainerList {
-						// Check if refreshContainerTable is initialized (safety)
 						if refreshContainerTable != nil {
 							refreshContainerTable(currentContainerFilterState)
 						}

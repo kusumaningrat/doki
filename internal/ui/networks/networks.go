@@ -166,7 +166,7 @@ func (p *NetworkListPage) HandleInput(
 						p.config.Pages.AddPage(PageInspectView, inspectModalContent, true, true)
 						p.config.App.SetFocus(inspectModalContent.GetContentPrimitive())
 					})
-				}(network) // Pass the selected container to the goroutine
+				}(network)
 				return nil
 			}
 
