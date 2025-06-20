@@ -60,6 +60,10 @@ func CreateMainMenu(
 		helper.DisplayTimedStatus(app, "Volumes page (not implemented yet)", 2*time.Second, nil, "")
 	})
 
+	networkButton := createCenteredButton("Networks", func() {
+		helper.DisplayTimedStatus(app, "Networks page (not implemented yet)", 2*time.Second, nil, "")
+	})
+
 	quitButton := createCenteredButton("Quit", func() {
 		app.Stop()
 	})
@@ -73,6 +77,8 @@ func CreateMainMenu(
 		AddItem(imagesButton, 1, 0, true).
 		AddItem(tview.NewBox(), 1, 0, false).
 		AddItem(volumesButton, 1, 0, true).
+		AddItem(tview.NewBox(), 1, 0, false).
+		AddItem(networkButton, 1, 0, true).
 		AddItem(tview.NewBox(), 1, 0, false).
 		AddItem(quitButton, 1, 0, true).
 		AddItem(tview.NewBox(), 0, 1, false) // Bottom Spacer
