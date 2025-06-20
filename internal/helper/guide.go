@@ -9,8 +9,8 @@ func ContainerGuide() *tview.TextView {
 	return tview.NewTextView().
 		SetDynamicColors(true).
 		SetText(("[white][::u]^Q[::-] Quit        [white][::u]^M[::-] Menu     [white][::u]Esc[::-] Back\n" +
-			"[white][::u]^R[::-] Restart Container  [white][::u]^S[::-] Start Container   [white][::u]^X[::-] Remove Container\n" +
-			"[white][::u]^A[::-] Reload Table  [white][::u]^I[::-] Inspect Container")).
+			"[white][::u]^R[::-] Restart Container  [white][::u]^S[::-] Start Container   [white][::u]^X[::-] Stop Container" +
+			"[white][::u]^A[::-] Reload Table  [white][::u]^I[::-] Inspect Container [white][::u]^D[::-] Delete Container")).
 		SetTextColor(tcell.ColorWhite).
 		SetTextAlign(tview.AlignCenter)
 }

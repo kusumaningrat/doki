@@ -39,9 +39,8 @@ type Config struct {
 }
 
 type ContainerListPage struct {
-	*tview.Flex      // Embeds the tview.Flex for its layout
-	config           Config
-	refreshTableFunc func(state string) // Function to refresh this page's table
+	*tview.Flex // Embeds the tview.Flex for its layout
+	config      Config
 }
 
 func (p *ContainerListPage) RefreshTable(state string) {
@@ -59,7 +58,7 @@ func (p *ContainerListPage) RefreshTable(state string) {
 func NewContainerListPage(cfg Config) *ContainerListPage {
 	// Assign the passed refresh function to the struct
 	p := &ContainerListPage{
-		Flex:   nil, // Initialize Flex below
+		Flex:   tview.NewFlex().SetDirection(tview.FlexRow), // Initialize Flex below
 		config: cfg,
 	}
 
@@ -67,7 +66,7 @@ func NewContainerListPage(cfg Config) *ContainerListPage {
 	p.RefreshTable(*p.config.CurrentFilterState) // Call the public method
 
 	// Define the layout (Flex) and assign it to p.Flex
-	p.Flex = tview.NewFlex().SetDirection(tview.FlexRow).
+	p.Flex.
 		AddItem(p.config.StatusToggle, 1, 0, false).
 		AddItem(p.config.Table, 0, 1, true). // Table is the primary focus of this view
 		AddItem(p.config.StatusBar, 1, 0, false).
@@ -106,11 +105,13 @@ func (p *ContainerListPage) HandleInput(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	case tcell.KeyEnter:
 		if p.config.App.GetFocus() == p.config.StatusToggle {
+			nextState := "running" // Default next state
 			if *p.config.CurrentFilterState == "running" {
-				p.refreshTableFunc("exited") // Call the passed refresh func
-			} else {
-				p.refreshTableFunc("running") // Call the passed refresh func
+				nextState = "exited" // If currently running, switch to exited
 			}
+			// Update the current filter state variable
+			*p.config.CurrentFilterState = nextState // Ensure this is updated before refreshing
+			p.RefreshTable(nextState)                // Call the method directly on 'p'
 			p.config.DisplayStatus(fmt.Sprintf("Switched to: %s", *p.config.CurrentFilterState), 2*time.Second)
 			return nil
 		}
@@ -136,23 +137,24 @@ func (p *ContainerListPage) HandleInput(event *tcell.EventKey) *tcell.EventKey {
 
 			switch event.Rune() {
 			case 's': // Start container
-				p.config.DisplayStatus(fmt.Sprintf("Starting container %s...", container.ID[:12]), 1*time.Second)
+				p.config.DisplayStatus(fmt.Sprintf("Starting container %s...", container.ID[:12]), 5*time.Second)
 				go func() { // Perform Docker action in a goroutine
 					err := p.config.UseCases.Control.StartContainer(context.Background(), container.ID)
 					p.config.App.QueueUpdateDraw(func() { // Queue UI update
 						if err != nil {
 							p.config.DisplayStatus(fmt.Sprintf("Failed to start: %v", err), 5*time.Second)
 						} else {
-							p.config.DisplayStatus(fmt.Sprintf("Container %s started. Switched to Active view.", container.ID[:12]), 3*time.Second)
+							p.config.DisplayStatus(fmt.Sprintf("Container %s started. Switched to Active view.", container.ID[:12]), 5*time.Second)
 							*p.config.CurrentFilterState = "running" // Update state
 							helper.UpdateToggleText(*p.config.CurrentFilterState, p.config.StatusToggle)
-							p.refreshTableFunc(*p.config.CurrentFilterState) // Refresh table
+							// p.refreshTableFunc(*p.config.CurrentFilterState) // Refresh table
+							p.config.App.SetFocus(p.config.Table)
 						}
 					})
 				}()
 				return nil
 			case 'x': // Stop container
-				p.config.DisplayStatus(fmt.Sprintf("Stopping container %s...", container.ID[:12]), 1*time.Second)
+				p.config.DisplayStatus(fmt.Sprintf("Stopping container %s...", container.ID[:12]), 5*time.Second)
 				go func() { // Perform Docker action in a goroutine
 					err := p.config.UseCases.Control.StopContainer(context.Background(), container.ID)
 					p.config.App.QueueUpdateDraw(func() { // Queue UI update
@@ -160,27 +162,29 @@ func (p *ContainerListPage) HandleInput(event *tcell.EventKey) *tcell.EventKey {
 							p.config.DisplayStatus(fmt.Sprintf("Failed to stop: %v", err), 5*time.Second)
 						} else {
 							p.config.DisplayStatus(fmt.Sprintf("Container %s stopped.", container.ID[:12]), 3*time.Second)
-							p.refreshTableFunc(*p.config.CurrentFilterState) // Refresh table
+							// p.refreshTableFunc(*p.config.CurrentFilterState) // Refresh table
+							p.config.App.SetFocus(p.config.Table)
 						}
 					})
 				}()
 				return nil
 			case 'r': // Restart container
-				p.config.DisplayStatus(fmt.Sprintf("Restarting container %s...", container.ID[:12]), 1*time.Second)
+				p.config.DisplayStatus(fmt.Sprintf("Restarting container %s...", container.ID[:12]), 5*time.Second)
 				go func() { // Perform Docker action in a goroutine
 					err := p.config.UseCases.Control.RestartContainer(context.Background(), container.ID)
 					p.config.App.QueueUpdateDraw(func() { // Queue UI update
 						if err != nil {
 							p.config.DisplayStatus(fmt.Sprintf("Failed to restart: %v", err), 5*time.Second)
 						} else {
-							p.config.DisplayStatus(fmt.Sprintf("Container %s restarted.", container.ID[:12]), 3*time.Second)
-							p.refreshTableFunc(*p.config.CurrentFilterState) // Refresh table
+							p.config.DisplayStatus(fmt.Sprintf("Container %s restarted.", container.ID[:12]), 5*time.Second)
+							// p.refreshTableFunc(*p.config.CurrentFilterState) // Refresh table
+							p.config.App.SetFocus(p.config.Table)
 						}
 					})
 				}()
 				return nil
 			case 'd': // Remove container
-				p.config.DisplayStatus(fmt.Sprintf("Attempting to remove container %s...", container.ID[:12]), 1*time.Second)
+				p.config.DisplayStatus(fmt.Sprintf("Attempting to remove container %s...", container.ID[:12]), 5*time.Second)
 				go func() { // Perform Docker action in a goroutine
 					forceRemove := strings.HasPrefix(container.Status, "Up")
 					err := p.config.UseCases.Control.RemoveContainer(context.Background(), container.ID, forceRemove)
@@ -188,14 +192,15 @@ func (p *ContainerListPage) HandleInput(event *tcell.EventKey) *tcell.EventKey {
 						if err != nil {
 							p.config.DisplayStatus(fmt.Sprintf("Failed to remove: %v", err), 5*time.Second)
 						} else {
-							p.config.DisplayStatus(fmt.Sprintf("Container %s removed.", container.ID[:12]), 3*time.Second)
-							p.refreshTableFunc(*p.config.CurrentFilterState) // Refresh table
+							p.config.DisplayStatus(fmt.Sprintf("Container %s removed.", container.ID[:12]), 5*time.Second)
+							// p.refreshTableFunc(*p.config.CurrentFilterState) // Refresh table
+							p.config.App.SetFocus(p.config.Table)
 						}
 					})
 				}()
 				return nil
 			case 'i': // Inspect container - opens the modal
-				p.config.DisplayStatus(fmt.Sprintf("Inspecting container %s...", container.ID[:12]), 1*time.Second)
+				p.config.DisplayStatus(fmt.Sprintf("Inspecting container %s...", container.ID[:12]), 5*time.Second)
 				go func(selectedContainer *domain.Container) { // Pass container by value
 					defer func() {
 						if r := recover(); r != nil {
@@ -216,7 +221,7 @@ func (p *ContainerListPage) HandleInput(event *tcell.EventKey) *tcell.EventKey {
 					inspectRaw, err := p.config.UseCases.Query.ContainerInspect(ctx, cID)
 					if err != nil {
 						p.config.App.QueueUpdateDraw(func() {
-							p.config.DisplayStatus(fmt.Sprintf("Inspect error: %v", err), 7*time.Second)
+							p.config.DisplayStatus(fmt.Sprintf("Inspect error: %v", err), 5*time.Second)
 							p.config.App.SetFocus(p.config.Table)
 						})
 						return
@@ -228,7 +233,7 @@ func (p *ContainerListPage) HandleInput(event *tcell.EventKey) *tcell.EventKey {
 
 					p.config.App.QueueUpdateDraw(func() {
 						p.config.Pages.AddPage(PageInspectView, inspectModalContent, true, true)
-						p.config.App.SetFocus(inspectModalContent.GetContentPrimitive())
+						p.config.App.SetFocus(inspectModalContent)
 					})
 				}(container) // Pass the selected container to the goroutine
 				return nil

@@ -102,19 +102,19 @@ func (p *VolumeListPage) HandleInput(
 		if p.config.App.GetFocus() == p.config.Table { // Only proceed if table is focused
 			row, _ := p.config.Table.GetSelection()
 			if row < 1 { // Header row check
-				p.config.DisplayStatus("No volume selected (header row).", 2*time.Second)
+				p.config.DisplayStatus("No volume selected (header row).", 5*time.Second)
 				return nil
 			}
 			cell := p.config.Table.GetCell(row, 0)
 			if cell == nil || cell.GetReference() == nil {
-				p.config.DisplayStatus("Error: No volume reference found.", 3*time.Second)
+				p.config.DisplayStatus("Error: No volume reference found.", 5*time.Second)
 				return nil
 			}
 			volume := cell.GetReference().(*domain.Volume)
 
 			switch event.Rune() {
 			case 'r':
-				p.config.DisplayStatus(fmt.Sprintf("Removing volume %s:%s...", volume.Name, volume.Driver), 1*time.Second)
+				p.config.DisplayStatus(fmt.Sprintf("Removing volume %s:%s...", volume.Name, volume.Driver), 5*time.Second)
 
 				go func() { // Perform Docker action in a goroutine
 					err := p.config.UseCases.Control.RemoveVolume(context.Background(), volume.Name)
@@ -123,7 +123,7 @@ func (p *VolumeListPage) HandleInput(
 						if err != nil {
 							p.config.DisplayStatus(fmt.Sprintf("Failed to remove: %v", err), 10*time.Second)
 						} else {
-							p.config.DisplayStatus(fmt.Sprintf("Volume %s removed.", volume.Name), 3*time.Second)
+							p.config.DisplayStatus(fmt.Sprintf("Volume %s removed.", volume.Name), 5*time.Second)
 						}
 						p.refreshTableFunc()
 						p.config.App.SetFocus(p.config.Table)
@@ -134,7 +134,7 @@ func (p *VolumeListPage) HandleInput(
 				return nil
 
 			case 'i':
-				p.config.DisplayStatus(fmt.Sprintf("Inspecting volume %s...", volume.Name[:12]), 1*time.Second)
+				p.config.DisplayStatus(fmt.Sprintf("Inspecting volume %s...", volume.Name[:12]), 5*time.Second)
 				go func(selectedVolume *domain.Volume) {
 					defer func() {
 						if r := recover(); r != nil {

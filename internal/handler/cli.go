@@ -219,10 +219,10 @@ func RunCLI(usecases *AppUseCases) {
 	networkListPage := networks.NewNetworkListPage(networkConfig)
 
 	pages.AddPage(PageMainMenu, mainMenuPage, true, true)
-	pages.AddPage(PageContainerList, containerListPage, true, false)
-	pages.AddPage(PageImageList, imageListPage, true, false)
-	pages.AddPage(PageVolumeList, volumeListPage, true, false)
-	pages.AddPage(PageNetworkList, networkListPage, true, false)
+	pages.AddPage(PageContainerList, containerListPage.Flex, true, false)
+	pages.AddPage(PageImageList, imageListPage.Flex, true, false)
+	pages.AddPage(PageVolumeList, volumeListPage.Flex, true, false)
+	pages.AddPage(PageNetworkList, networkListPage.Flex, true, false)
 
 	refreshContainerTable = containerListPage.RefreshTable
 	refreshImageTable = imageListPage.RefreshTable

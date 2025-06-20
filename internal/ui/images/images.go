@@ -117,19 +117,19 @@ func (p *ImageListPage) HandleInput(
 
 			switch event.Rune() {
 			case 'p': // Pull Image (example action)
-				p.config.DisplayStatus(fmt.Sprintf("Pulling image %s:%s...", image.Repository, image.Tag), 1*time.Second)
+				p.config.DisplayStatus(fmt.Sprintf("Pulling image %s:%s...", image.Repository, image.Tag), 5*time.Second)
 				go func() { // Perform Docker action in a goroutine
 					err := fmt.Errorf("image pull not implemented yet for %s", image.Repository+":"+image.Tag)
 					if err != nil {
 						p.config.DisplayStatus(fmt.Sprintf("Failed to pull: %v", err), 5*time.Second)
 					} else {
-						p.config.DisplayStatus(fmt.Sprintf("Image %s pulled.", image.Repository+":"+image.Tag), 3*time.Second)
+						p.config.DisplayStatus(fmt.Sprintf("Image %s pulled.", image.Repository+":"+image.Tag), 5*time.Second)
 						p.refreshTableFunc() // Refresh table
 					}
 				}()
 				return nil
 			case 'r': // Remove Image (example action)
-				p.config.DisplayStatus(fmt.Sprintf("Removing image %s:%s...", image.Repository, image.Tag), 1*time.Second)
+				p.config.DisplayStatus(fmt.Sprintf("Removing image %s:%s...", image.Repository, image.Tag), 5*time.Second)
 
 				var identifier string
 				// If the image has valid repository and tag, use that to untag it
@@ -145,7 +145,7 @@ func (p *ImageListPage) HandleInput(
 						if err != nil {
 							p.config.DisplayStatus(fmt.Sprintf("Failed to remove: %v", err), 10*time.Second)
 						} else {
-							p.config.DisplayStatus(fmt.Sprintf("Image %s removed.", image.Repository+":"+image.Tag), 3*time.Second)
+							p.config.DisplayStatus(fmt.Sprintf("Image %s removed.", image.Repository+":"+image.Tag), 5*time.Second)
 						}
 						p.refreshTableFunc()
 						p.config.App.SetFocus(p.config.Table)
@@ -156,7 +156,7 @@ func (p *ImageListPage) HandleInput(
 				return nil
 
 			case 'i': // Inspect image - opens the modal
-				p.config.DisplayStatus(fmt.Sprintf("Inspecting image %s...", image.ImageID[:12]), 1*time.Second)
+				p.config.DisplayStatus(fmt.Sprintf("Inspecting image %s...", image.ImageID[:12]), 5*time.Second)
 				go func(selectedImage *domain.Image) {
 					defer func() {
 						if r := recover(); r != nil {
@@ -177,7 +177,7 @@ func (p *ImageListPage) HandleInput(
 					inspectRaw, err := p.config.UseCases.Query.ImageInspect(ctx, ImageRepository)
 					if err != nil {
 						p.config.App.QueueUpdateDraw(func() {
-							p.config.DisplayStatus(fmt.Sprintf("Inspect error: %v", err), 7*time.Second)
+							p.config.DisplayStatus(fmt.Sprintf("Inspect error: %v", err), 5*time.Second)
 							p.config.App.SetFocus(p.config.Table)
 						})
 						return
