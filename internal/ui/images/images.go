@@ -9,6 +9,7 @@ import (
 	"docker-tui/internal/app"    // Your application use cases
 	"docker-tui/internal/domain" // Your domain models
 	"docker-tui/internal/helper"
+	"docker-tui/internal/ui/inspect"
 
 	// Your general UI helpers
 	"github.com/gdamore/tcell/v2"
@@ -152,7 +153,46 @@ func (p *ImageListPage) HandleInput(
 
 				}()
 				return nil
+
+			case 'i': // Inspect image - opens the modal
+				p.config.DisplayStatus(fmt.Sprintf("Inspecting image %s...", image.ImageID[:12]), 1*time.Second)
+				go func(selectedImage *domain.Image) {
+					defer func() {
+						if r := recover(); r != nil {
+							p.config.App.QueueUpdateDraw(func() {
+								p.config.DisplayStatus(fmt.Sprintf("Internal error: %v", r), 5*time.Second)
+								if currentPageName, _ := p.config.Pages.GetFrontPage(); currentPageName == PageInspectView {
+									p.config.Pages.RemovePage(PageInspectView)
+								}
+								p.config.App.SetFocus(p.config.Table)
+							})
+						}
+					}()
+
+					ImageID := selectedImage.ImageID
+					ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+					defer cancel()
+
+					inspectRaw, err := p.config.UseCases.Query.ImageInspect(ctx, ImageID)
+					if err != nil {
+						p.config.App.QueueUpdateDraw(func() {
+							p.config.DisplayStatus(fmt.Sprintf("Inspect error: %v", err), 7*time.Second)
+							p.config.App.SetFocus(p.config.Table)
+						})
+						return
+					}
+
+					// Create the inspect modal content and add it as a new page
+					inspectModalContent := inspect.CreateInspectModal(p.config.App, p.config.Pages, p.config.Table, inspectRaw, selectedImage.Repository, p.config.DisplayStatus)
+
+					p.config.App.QueueUpdateDraw(func() {
+						p.config.Pages.AddPage(PageInspectView, inspectModalContent, true, true)
+						p.config.App.SetFocus(inspectModalContent.GetContentPrimitive())
+					})
+				}(image) // Pass the selected container to the goroutine
+				return nil
 			}
+
 		}
 	}
 	return event

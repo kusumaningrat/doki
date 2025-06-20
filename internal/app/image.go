@@ -25,6 +25,10 @@ func (u *ImageUseCase) RemoveImage(ctx context.Context, id string) error {
 	return u.service.RemoveImage(ctx, id)
 }
 
+func (u *ImageUseCase) ImageInspect(ctx context.Context, id string) (string, error) {
+	return u.service.ImageInspect(ctx, id)
+}
+
 type ImageUseCases struct {
 	Query   ImageQueryUseCase
 	Control ImageControlUseCase
@@ -32,6 +36,7 @@ type ImageUseCases struct {
 
 type ImageQueryUseCase interface {
 	ListAllImages(ctx context.Context) ([]domain.Image, error)
+	ImageInspect(ctx context.Context, id string) (string, error)
 }
 
 type ImageControlUseCase interface {

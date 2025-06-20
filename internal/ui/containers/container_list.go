@@ -7,7 +7,6 @@ import (
 	"docker-tui/internal/helper"
 	"docker-tui/internal/ui/inspect"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -199,7 +198,6 @@ func (p *ContainerListPage) HandleInput(event *tcell.EventKey) *tcell.EventKey {
 				go func(selectedContainer *domain.Container) { // Pass container by value
 					defer func() {
 						if r := recover(); r != nil {
-							fmt.Fprintf(os.Stderr, "DEBUG: Recovered from panic in inspect goroutine: %v\n", r)
 							p.config.App.QueueUpdateDraw(func() {
 								p.config.DisplayStatus(fmt.Sprintf("Internal error: %v", r), 5*time.Second)
 								if currentPageName, _ := p.config.Pages.GetFrontPage(); currentPageName == PageInspectView {

@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"bytes"
 	"context" // Import context
 	"docker-tui/internal/domain"
 	"fmt"
@@ -206,6 +207,16 @@ func (d *DockerClient) ListAllImages(ctx context.Context) ([]domain.Image, error
 		}
 	}
 	return result, nil // Return nil for error
+}
+
+func (d *DockerClient) ImageInspect(ctx context.Context, id string) (string, error) {
+	var buf bytes.Buffer
+	_, err := d.cli.ImageInspect(ctx, id, client.ImageInspectWithRawResponse(&buf))
+	if err != nil {
+		return "", fmt.Errorf("failed to inspect image %s: %w", id[:12], err)
+	}
+
+	return helper.PrettyJson(buf.String())
 }
 
 func (d *DockerClient) RemoveImage(ctx context.Context, id string) error {
