@@ -11,6 +11,7 @@ import (
 	"docker-tui/internal/ui/containers"
 	"docker-tui/internal/ui/images"
 	"docker-tui/internal/ui/menu"
+	"docker-tui/internal/ui/volumes"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -19,6 +20,7 @@ import (
 type AppUseCases struct {
 	Containers *app.ContainerUseCases
 	Images     *app.ImageUseCases
+	Volumes    *app.VolumeUseCases
 }
 
 // Global variables for tview components (accessible across RunCLI and its closures)
@@ -26,6 +28,7 @@ var tuiApp *tview.Application
 var pages *tview.Pages
 var containerTable *tview.Table
 var imageTable *tview.Table
+var volumeTable *tview.Table
 
 // var mainAppLayout *tview.Flex // Your main app layout containing table, status bar, etc.
 
@@ -34,10 +37,12 @@ var autoRefreshEnabled = false
 var stopAutoRefresh chan struct{}
 
 const (
-	PageMainMenu      = "main_menu"
+	PageMainMenu    = "main_menu"
+	PageInspectView = "inspect_view"
+
 	PageContainerList = "container_list"
 	PageImageList     = "image_list"
-	PageInspectView   = "inspect_view" // Constant for the inspect modal page name
+	PageVolumeList    = "volume_list"
 )
 
 func RunCLI(usecases *AppUseCases) {
@@ -48,6 +53,7 @@ func RunCLI(usecases *AppUseCases) {
 
 	containerTable = helper.ContainerTableFormat()
 	imageTable = helper.ImageTableFormat()
+	volumeTable = helper.VolumeTableFormat()
 
 	statusToggle := helper.StatusToggle(tuiApp)
 	statusBar := helper.StatusBar()
@@ -67,6 +73,7 @@ func RunCLI(usecases *AppUseCases) {
 
 	var refreshContainerTable func(state string)
 	var refreshImageTable func()
+	var refreshVolumeTable func()
 
 	// Functions for auto-refresh
 	startAutoRefresh := func() {
@@ -116,7 +123,7 @@ func RunCLI(usecases *AppUseCases) {
 		pages.RemovePage(PageInspectView)
 		tuiApp.SetFocus(containerTable) // Always return focus to the container table after inspect
 	}
-	mainMenuPage := menu.CreateMainMenu(tuiApp, pages, containerTable, imageTable, displayTimedStatus)
+	mainMenuPage := menu.CreateMainMenu(tuiApp, pages, containerTable, imageTable, volumeTable, displayTimedStatus)
 
 	containerPageConfig := containers.Config{
 		App:                   tuiApp,
@@ -145,18 +152,33 @@ func RunCLI(usecases *AppUseCases) {
 		UseCases:             usecases.Images,
 	}
 
+	volumeConfig := volumes.Config{
+		App:                  tuiApp,
+		Pages:                pages,
+		Table:                volumeTable,
+		StatusBar:            statusBar,
+		ExitGuide:            exitGuide,
+		DisplayStatus:        displayTimedStatus,
+		StartAutoRefreshFunc: startAutoRefresh,
+		StopAutoRefreshFunc:  stopAutoRefreshFunc,
+		UseCases:             usecases.Volumes,
+	}
+
 	containerListPage := containers.NewContainerListPage(containerPageConfig)
 	imageListPage := images.NewImageListPage(imageConfig)
+	volumeListPage := volumes.NewVolumeListPage(volumeConfig)
 
 	pages.AddPage(PageMainMenu, mainMenuPage, true, true)
-	pages.AddPage(PageContainerList, containerListPage, true, false)
 	pages.AddPage(PageImageList, imageListPage, true, false)
+	pages.AddPage(PageVolumeList, volumeListPage, true, false)
 
 	refreshContainerTable = containerListPage.RefreshTable
 	refreshImageTable = imageListPage.RefreshTable
+	refreshVolumeTable = volumeListPage.RefreshTable
 	// Initial refresh and start auto-refresh
 	refreshContainerTable(currentContainerFilterState)
 	refreshImageTable()
+	refreshVolumeTable()
 	startAutoRefresh()
 
 	tuiApp.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -177,6 +199,10 @@ func RunCLI(usecases *AppUseCases) {
 		case PageImageList:
 			// Delegate input handling to the ContainerListPage's specific method
 			return imageListPage.HandleInput(event)
+
+		case PageVolumeList:
+			// Delegate input handling to the ContainerListPage's specific method
+			return volumeListPage.HandleInput(event)
 
 		case PageInspectView: // Handle keys specifically for the inspect modal
 			switch event.Key() {

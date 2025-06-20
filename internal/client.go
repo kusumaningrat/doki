@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context" // Import context
 	"docker-tui/internal/domain"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/dustin/go-humanize"
 
@@ -222,4 +224,41 @@ func (d *DockerClient) ImageInspect(ctx context.Context, id string) (string, err
 func (d *DockerClient) RemoveImage(ctx context.Context, id string) error {
 	_, err := d.cli.ImageRemove(ctx, id, image.RemoveOptions{})
 	return err
+}
+
+func (d *DockerClient) ListAllVolumes(ctx context.Context) ([]domain.Volume, error) { // Added error return
+	volumes, err := d.cli.VolumeList(ctx, volume.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list docker volumes: %w", err)
+	}
+
+	var result []domain.Volume
+
+	for _, v := range volumes.Volumes {
+		result = append(result, domain.Volume{
+			Name:       v.Name,
+			Driver:     v.Driver,
+			Mountpoint: v.Mountpoint,
+			Labels:     v.Labels,
+		})
+	}
+	return result, nil
+}
+
+func (d *DockerClient) RemoveVolume(ctx context.Context, name string) error {
+	return d.cli.VolumeRemove(ctx, name, true)
+}
+
+func (d *DockerClient) VolumeInspect(ctx context.Context, name string) (string, error) {
+	volumeInspectResult, err := d.cli.VolumeInspect(ctx, name)
+	if err != nil {
+		return "", fmt.Errorf("failed to inspect volume %s: %w", name, err)
+	}
+
+	jsonBytes, err := json.MarshalIndent(volumeInspectResult, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal volume inspect result to JSON: %w", err)
+	}
+
+	return helper.PrettyJson(string(jsonBytes))
 }

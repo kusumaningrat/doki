@@ -104,6 +104,39 @@ func PopulateImageTableUI(table *tview.Table, images []domain.Image) {
 	}
 }
 
+func PopulateVolumeTableUI(table *tview.Table, volumes []domain.Volume) {
+	for row := table.GetRowCount() - 1; row >= 1; row-- {
+		table.RemoveRow(row)
+	}
+
+	if len(volumes) == 0 {
+		// Center "No images" message visually
+		table.SetCell(1, 0, tview.NewTableCell("No volume found.").
+			SetSelectable(false).
+			SetTextColor(tcell.ColorYellow).
+			SetAlign(tview.AlignCenter).
+			SetExpansion(7))
+		for col := 1; col < table.GetColumnCount(); col++ { // Clear other cells in the row
+			table.SetCell(1, col, tview.NewTableCell(""))
+		}
+	} else {
+		for rowNum, volume := range volumes {
+			rowIdx := rowNum + 1 // +1 for the header row
+			table.SetCell(rowIdx, 0, tview.NewTableCell(volume.Name[:12]).
+				SetReference(&volume).
+				SetAlign(tview.AlignLeft))
+			table.SetCell(
+				rowIdx, 1,
+				tview.NewTableCell(volume.Driver).
+					SetAlign(tview.AlignLeft))
+			table.SetCell(
+				rowIdx, 2,
+				tview.NewTableCell(volume.Mountpoint[24:]).
+					SetAlign(tview.AlignLeft))
+		}
+	}
+}
+
 func ContainerTableFormat() *tview.Table {
 	table := tview.NewTable()
 	table.SetBorder(true)
@@ -139,6 +172,31 @@ func ImageTableFormat() *tview.Table {
 		"IMAGE ID",   // Col 0
 		"CREATED",    // Col 3
 		"SIZE",       // Col 2
+	}
+
+	table.SetTitle("Docker Container - CLI Based").SetTitleAlign(tview.AlignCenter)
+
+	for col, header := range headers {
+		table.SetCell(0, col,
+			tview.NewTableCell(header).
+				SetTextColor(tcell.ColorYellow).
+				SetAlign(tview.AlignLeft).
+				SetSelectable(false))
+	}
+
+	return table
+}
+
+func VolumeTableFormat() *tview.Table {
+	table := tview.NewTable()
+	table.SetBorder(true)
+	table.SetSelectable(true, true)
+	table.SetFixed(1, 0)
+
+	headers := []string{
+		"NAME",
+		"DRIVER",
+		"MOUNTPOINT",
 	}
 
 	table.SetTitle("Docker Container - CLI Based").SetTitleAlign(tview.AlignCenter)

@@ -40,5 +40,5 @@ type ImageQueryUseCase interface {
 }
 
 type ImageControlUseCase interface {
-	RemoveImage(ctx context.Context, identifier string) error
+	RemoveImage(ctx context.Context, id string) error
 }

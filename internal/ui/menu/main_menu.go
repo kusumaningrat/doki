@@ -9,10 +9,12 @@ import (
 )
 
 const (
-	PageMainMenu      = "main_menu"
+	PageMainMenu    = "main_menu"
+	PageInspectView = "inspect_view"
+
 	PageContainerList = "container_list"
 	PageImageList     = "image_list"
-	PageInspectView   = "inspect_view"
+	PageVolumeList    = "volume_list"
 )
 
 func CreateMainMenu(
@@ -20,6 +22,7 @@ func CreateMainMenu(
 	p *tview.Pages,
 	containerTable *tview.Table, // Rename to be explicit
 	imageTable *tview.Table,
+	volumeTable *tview.Table,
 	displayTimedStatus func(message string, duration time.Duration,
 	)) *tview.Flex {
 
@@ -57,7 +60,8 @@ func CreateMainMenu(
 	})
 
 	volumesButton := createCenteredButton("Volumes", func() {
-		helper.DisplayTimedStatus(app, "Volumes page (not implemented yet)", 2*time.Second, nil, "")
+		p.SwitchToPage(PageVolumeList)
+		app.SetFocus(volumeTable)
 	})
 
 	networkButton := createCenteredButton("Networks", func() {
