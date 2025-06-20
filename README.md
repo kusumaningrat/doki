@@ -50,10 +50,9 @@ Doki is written in Go, making it easy to install from source or via pre-compiled
 Pre-compiled binaries for Linux, macOS, and Windows will be available on the [releases page](https://github.com/kusumaningrat/doki/releases). Download the appropriate archive for your system, extract it, and place the `doki` executable in your system's PATH.
 
 ```bash
-# Example for Linux/macOS
-# Download the latest release from the link above, e.g., doki_0.1.0_linux_amd64.tar.gz
-wget [https://github.com/your-username/doki/releases/download/v0.1.0/doki_0.1.0_linux_amd64.tar.gz](https://github.com/your-username/doki/releases/download/v0.1.0/doki_0.1.0_linux_amd64.tar.gz)
-tar -xzf doki_0.1.0_linux_amd64.tar.gz
-sudo mv doki /usr/local/bin/ # Or any directory in your PATH
+# Example for Linux With amd64 architecture
+wget [https://github.com/kusumaningrat/doki/releases/download/v0.1.0/doki-linux-amd64](https://github.com/kusumaningrat/doki/releases/download/v0.1.0/doki-linux-amd64)
+sudo chmod +x doki-linux-amd64
+sudo mv doki-linux-amd64 /usr/local/bin/doki
 doki # Run the app!
 ```
