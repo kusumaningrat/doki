@@ -1,7 +1,6 @@
 package menu
 
 import (
-	"docker-tui/internal/helper"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -15,6 +14,7 @@ const (
 	PageContainerList = "container_list"
 	PageImageList     = "image_list"
 	PageVolumeList    = "volume_list"
+	PageNetworkList   = "network_list"
 )
 
 func CreateMainMenu(
@@ -23,6 +23,7 @@ func CreateMainMenu(
 	containerTable *tview.Table, // Rename to be explicit
 	imageTable *tview.Table,
 	volumeTable *tview.Table,
+	networkTable *tview.Table,
 	displayTimedStatus func(message string, duration time.Duration,
 	)) *tview.Flex {
 
@@ -65,7 +66,8 @@ func CreateMainMenu(
 	})
 
 	networkButton := createCenteredButton("Networks", func() {
-		helper.DisplayTimedStatus(app, "Networks page (not implemented yet)", 2*time.Second, nil, "")
+		p.SwitchToPage(PageNetworkList)
+		app.SetFocus(networkTable)
 	})
 
 	quitButton := createCenteredButton("Quit", func() {

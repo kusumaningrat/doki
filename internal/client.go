@@ -12,6 +12,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/dustin/go-humanize"
@@ -258,6 +259,43 @@ func (d *DockerClient) VolumeInspect(ctx context.Context, name string) (string, 
 	jsonBytes, err := json.MarshalIndent(volumeInspectResult, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal volume inspect result to JSON: %w", err)
+	}
+
+	return helper.PrettyJson(string(jsonBytes))
+}
+
+func (d *DockerClient) ListAllNetworks(ctx context.Context) ([]domain.Network, error) { // Added error return
+	networks, err := d.cli.NetworkList(ctx, network.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list docker network: %w", err)
+	}
+
+	var result []domain.Network
+
+	for _, v := range networks {
+		result = append(result, domain.Network{
+			NetworkID: v.ID,
+			Name:      v.Name,
+			Driver:    v.Driver,
+			Scope:     v.Scope,
+		})
+	}
+	return result, nil
+}
+
+func (d *DockerClient) RemoveNetwork(ctx context.Context, id string) error {
+	return d.cli.NetworkRemove(ctx, id)
+}
+
+func (d *DockerClient) InspectNetwork(ctx context.Context, id string) (string, error) {
+	networkInspectResult, err := d.cli.NetworkInspect(ctx, id, network.InspectOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to inspect network %s: %w", id, err)
+	}
+
+	jsonBytes, err := json.MarshalIndent(networkInspectResult, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal network inspect result to JSON: %w", err)
 	}
 
 	return helper.PrettyJson(string(jsonBytes))

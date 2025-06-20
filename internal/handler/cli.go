@@ -11,6 +11,7 @@ import (
 	"docker-tui/internal/ui/containers"
 	"docker-tui/internal/ui/images"
 	"docker-tui/internal/ui/menu"
+	"docker-tui/internal/ui/networks"
 	"docker-tui/internal/ui/volumes"
 
 	"github.com/gdamore/tcell/v2"
@@ -21,6 +22,7 @@ type AppUseCases struct {
 	Containers *app.ContainerUseCases
 	Images     *app.ImageUseCases
 	Volumes    *app.VolumeUseCases
+	Networks   *app.NetworkUseCases
 }
 
 // Global variables for tview components (accessible across RunCLI and its closures)
@@ -29,6 +31,7 @@ var pages *tview.Pages
 var containerTable *tview.Table
 var imageTable *tview.Table
 var volumeTable *tview.Table
+var networkTable *tview.Table
 
 // var mainAppLayout *tview.Flex // Your main app layout containing table, status bar, etc.
 
@@ -43,6 +46,7 @@ const (
 	PageContainerList = "container_list"
 	PageImageList     = "image_list"
 	PageVolumeList    = "volume_list"
+	PageNetworkList   = "network_list"
 )
 
 func RunCLI(usecases *AppUseCases) {
@@ -54,6 +58,7 @@ func RunCLI(usecases *AppUseCases) {
 	containerTable = helper.ContainerTableFormat()
 	imageTable = helper.ImageTableFormat()
 	volumeTable = helper.VolumeTableFormat()
+	networkTable = helper.NetworkTableFormat()
 
 	statusToggle := helper.StatusToggle(tuiApp)
 	statusBar := helper.StatusBar()
@@ -74,6 +79,7 @@ func RunCLI(usecases *AppUseCases) {
 	var refreshContainerTable func(state string)
 	var refreshImageTable func()
 	var refreshVolumeTable func()
+	var refreshNetworkTable func()
 
 	// Functions for auto-refresh
 	startAutoRefresh := func() {
@@ -123,7 +129,15 @@ func RunCLI(usecases *AppUseCases) {
 		pages.RemovePage(PageInspectView)
 		tuiApp.SetFocus(containerTable) // Always return focus to the container table after inspect
 	}
-	mainMenuPage := menu.CreateMainMenu(tuiApp, pages, containerTable, imageTable, volumeTable, displayTimedStatus)
+	mainMenuPage := menu.CreateMainMenu(
+		tuiApp,
+		pages,
+		containerTable,
+		imageTable,
+		volumeTable,
+		networkTable,
+		displayTimedStatus,
+	)
 
 	containerPageConfig := containers.Config{
 		App:                   tuiApp,
@@ -164,21 +178,37 @@ func RunCLI(usecases *AppUseCases) {
 		UseCases:             usecases.Volumes,
 	}
 
+	networkConfig := networks.Config{
+		App:                  tuiApp,
+		Pages:                pages,
+		Table:                networkTable,
+		StatusBar:            statusBar,
+		ExitGuide:            exitGuide,
+		DisplayStatus:        displayTimedStatus,
+		StartAutoRefreshFunc: startAutoRefresh,
+		StopAutoRefreshFunc:  stopAutoRefreshFunc,
+		UseCases:             usecases.Networks,
+	}
+
 	containerListPage := containers.NewContainerListPage(containerPageConfig)
 	imageListPage := images.NewImageListPage(imageConfig)
 	volumeListPage := volumes.NewVolumeListPage(volumeConfig)
+	networkListPage := networks.NewNetworkListPage(networkConfig)
 
 	pages.AddPage(PageMainMenu, mainMenuPage, true, true)
 	pages.AddPage(PageImageList, imageListPage, true, false)
 	pages.AddPage(PageVolumeList, volumeListPage, true, false)
+	pages.AddPage(PageNetworkList, networkListPage, true, false)
 
 	refreshContainerTable = containerListPage.RefreshTable
 	refreshImageTable = imageListPage.RefreshTable
 	refreshVolumeTable = volumeListPage.RefreshTable
+	refreshNetworkTable = networkListPage.RefreshTable
 	// Initial refresh and start auto-refresh
 	refreshContainerTable(currentContainerFilterState)
 	refreshImageTable()
 	refreshVolumeTable()
+	refreshNetworkTable()
 	startAutoRefresh()
 
 	tuiApp.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -203,6 +233,10 @@ func RunCLI(usecases *AppUseCases) {
 		case PageVolumeList:
 			// Delegate input handling to the ContainerListPage's specific method
 			return volumeListPage.HandleInput(event)
+
+		case PageNetworkList:
+			// Delegate input handling to the ContainerListPage's specific method
+			return networkListPage.HandleInput(event)
 
 		case PageInspectView: // Handle keys specifically for the inspect modal
 			switch event.Key() {

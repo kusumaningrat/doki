@@ -16,10 +16,13 @@ func main() {
 	containerUseCase := app.NewContainerUseCase(dockerClient)
 	imageUseCase := app.NewImageUseCase(dockerClient)
 	volumeUseCase := app.NewVolumeUseCase(dockerClient)
+	networkUseCase := app.NewNetworkUseCase(dockerClient)
+
 	appUseCases := &handler.AppUseCases{
 		Containers: containerUseCase,
 		Images:     imageUseCase,
 		Volumes:    volumeUseCase,
+		Networks:   networkUseCase,
 	}
 
 	handler.RunCLI(appUseCases)

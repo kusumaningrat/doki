@@ -137,6 +137,43 @@ func PopulateVolumeTableUI(table *tview.Table, volumes []domain.Volume) {
 	}
 }
 
+func PopulateNetworkTableUI(table *tview.Table, networks []domain.Network) {
+	for row := table.GetRowCount() - 1; row >= 1; row-- {
+		table.RemoveRow(row)
+	}
+
+	if len(networks) == 0 {
+		// Center "No images" message visually
+		table.SetCell(1, 0, tview.NewTableCell("No network found.").
+			SetSelectable(false).
+			SetTextColor(tcell.ColorYellow).
+			SetAlign(tview.AlignCenter).
+			SetExpansion(7))
+		for col := 1; col < table.GetColumnCount(); col++ { // Clear other cells in the row
+			table.SetCell(1, col, tview.NewTableCell(""))
+		}
+	} else {
+		for rowNum, network := range networks {
+			rowIdx := rowNum + 1 // +1 for the header row
+			table.SetCell(rowIdx, 0, tview.NewTableCell(network.NetworkID).
+				SetReference(&network).
+				SetAlign(tview.AlignLeft))
+			table.SetCell(
+				rowIdx, 1,
+				tview.NewTableCell(network.Name).
+					SetAlign(tview.AlignLeft))
+			table.SetCell(
+				rowIdx, 2,
+				tview.NewTableCell(network.Driver).
+					SetAlign(tview.AlignLeft))
+			table.SetCell(
+				rowIdx, 3,
+				tview.NewTableCell(network.Scope).
+					SetAlign(tview.AlignLeft))
+		}
+	}
+}
+
 func ContainerTableFormat() *tview.Table {
 	table := tview.NewTable()
 	table.SetBorder(true)
@@ -167,11 +204,37 @@ func ImageTableFormat() *tview.Table {
 	table.SetFixed(1, 0)
 
 	headers := []string{
-		"REPOSITORY", // Col 1
-		"TAG",        // Col 4
-		"IMAGE ID",   // Col 0
-		"CREATED",    // Col 3
-		"SIZE",       // Col 2
+		"REPOSITORY",
+		"TAG",
+		"IMAGE ID",
+		"CREATED",
+		"SIZE",
+	}
+
+	table.SetTitle("Docker Container - CLI Based").SetTitleAlign(tview.AlignCenter)
+
+	for col, header := range headers {
+		table.SetCell(0, col,
+			tview.NewTableCell(header).
+				SetTextColor(tcell.ColorYellow).
+				SetAlign(tview.AlignLeft).
+				SetSelectable(false))
+	}
+
+	return table
+}
+
+func NetworkTableFormat() *tview.Table {
+	table := tview.NewTable()
+	table.SetBorder(true)
+	table.SetSelectable(true, true)
+	table.SetFixed(1, 0)
+
+	headers := []string{
+		"NETWORK ID",
+		"NAME",
+		"DRIVER",
+		"SCOPE",
 	}
 
 	table.SetTitle("Docker Container - CLI Based").SetTitleAlign(tview.AlignCenter)
