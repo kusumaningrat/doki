@@ -128,15 +128,6 @@ func RunCLI(usecases *AppUseCases) {
 		pages.RemovePage(PageInspectView)
 		tuiApp.SetFocus(containerTable) // Always return focus to the container table after inspect
 	}
-	mainMenuPage := menu.CreateMainMenu(
-		tuiApp,
-		pages,
-		containerTable,
-		imageTable,
-		volumeTable,
-		networkTable,
-		displayTimedStatus,
-	)
 
 	containerPageConfig := containers.Config{
 		App:                   tuiApp,
@@ -188,6 +179,15 @@ func RunCLI(usecases *AppUseCases) {
 		StopAutoRefreshFunc:  stopAutoRefreshFunc,
 		UseCases:             usecases.Networks,
 	}
+	mainMenuPage := menu.CreateMainMenu(
+		tuiApp,
+		pages,
+		containerTable,
+		imageTable,
+		volumeTable,
+		networkTable,
+		displayTimedStatus,
+	)
 
 	containerListPage := containers.NewContainerListPage(containerPageConfig)
 	imageListPage := images.NewImageListPage(imageConfig)
@@ -195,6 +195,7 @@ func RunCLI(usecases *AppUseCases) {
 	networkListPage := networks.NewNetworkListPage(networkConfig)
 
 	pages.AddPage(PageMainMenu, mainMenuPage, true, true)
+	pages.AddPage(PageContainerList, containerListPage, true, false)
 	pages.AddPage(PageImageList, imageListPage, true, false)
 	pages.AddPage(PageVolumeList, volumeListPage, true, false)
 	pages.AddPage(PageNetworkList, networkListPage, true, false)
