@@ -51,7 +51,7 @@ Pre-compiled binaries for Linux, macOS, and Windows will be available on the [re
 
 ```bash
 # Example for Linux With amd64 architecture
-wget [https://github.com/kusumaningrat/doki/releases/download/v0.1.0/doki-linux-amd64](https://github.com/kusumaningrat/doki/releases/download/v0.1.0/doki-linux-amd64)
+wget https://github.com/kusumaningrat/doki/releases/download/v0.1.0/doki-linux-amd64
 sudo chmod +x doki-linux-amd64
 sudo mv doki-linux-amd64 /usr/local/bin/doki
 doki # Run the app!
