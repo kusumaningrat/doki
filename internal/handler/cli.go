@@ -137,6 +137,8 @@ func RunCLI(usecases *AppUseCases) {
 		App:                  tuiApp,
 		Pages:                pages,
 		Table:                imageTable,
+		StatusBar:            statusBar,
+		ExitGuide:            exitGuide, // Potentially change to "Back to Menu"
 		DisplayStatus:        displayTimedStatus,
 		StartAutoRefreshFunc: startAutoRefresh, // Pass auto-refresh controls
 		StopAutoRefreshFunc:  stopAutoRefreshFunc,

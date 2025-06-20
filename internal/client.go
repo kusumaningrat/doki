@@ -164,33 +164,51 @@ func (d *DockerClient) ContainerInspect(ctx context.Context, id string) (string,
 }
 
 func (d *DockerClient) ListAllImages(ctx context.Context) ([]domain.Image, error) { // Added error return
-	images, err := d.cli.ImageList(ctx, image.ListOptions{})
+	images, err := d.cli.ImageList(ctx, image.ListOptions{All: true})
 	if err != nil {
-		return nil, err // Return error here
+		return nil, fmt.Errorf("failed to list docker images: %w", err)
 	}
 
-	result := make([]domain.Image, 0, len(images))
-	for _, img := range images { // Renamed 'image' to 'img' to avoid conflict with 'image' package
-		repository := "<none>"
-		tag := "<none>"
+	var result []domain.Image
 
-		if len(img.RepoTags) > 0 {
-			// RepoTags usually contains "repository:tag"
-			repoTag := img.RepoTags[0] // Take the first tag
-			parts := strings.SplitN(repoTag, ":", 2)
-			repository = parts[0]
-			if len(parts) > 1 {
-				tag = parts[1]
+	for _, img := range images {
+		imageID := img.ID[7:19] // Shorten image ID
+		created := humanize.Time(time.Unix(img.Created, 0))
+		size := humanize.Bytes(uint64(img.Size))
+
+		if len(img.RepoTags) == 0 || (len(img.RepoTags) == 1 && img.RepoTags[0] == "<none>:<none>") {
+			result = append(result, domain.Image{
+				Repository: "<none>",
+				Tag:        "<none>",
+				ImageID:    imageID,
+				Created:    created,
+				Size:       size,
+			})
+		} else {
+			for _, repoTag := range img.RepoTags {
+				repository := "<none>"
+				tag := "<none>"
+
+				parts := strings.SplitN(repoTag, ":", 2)
+				repository = parts[0]
+				if len(parts) > 1 {
+					tag = parts[1]
+				}
+
+				result = append(result, domain.Image{
+					Repository: repository,
+					Tag:        tag,
+					ImageID:    imageID, // Same ImageID for all tags pointing to it
+					Created:    created,
+					Size:       size,
+				})
 			}
 		}
-
-		result = append(result, domain.Image{
-			Repository: repository,
-			Tag:        tag,
-			ImageID:    img.ID[7:19], // Shorten image ID for display
-			Created:    humanize.Time(time.Unix(img.Created, 0)),
-			Size:       humanize.Bytes(uint64(img.Size)),
-		})
 	}
 	return result, nil // Return nil for error
+}
+
+func (d *DockerClient) RemoveImage(ctx context.Context, id string) error {
+	_, err := d.cli.ImageRemove(ctx, id, image.RemoveOptions{})
+	return err
 }

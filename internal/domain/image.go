@@ -12,4 +12,5 @@ type Image struct {
 
 type ImageService interface {
 	ListAllImages(ctx context.Context) ([]Image, error)
+	RemoveImage(ctx context.Context, identifier string) error
 }

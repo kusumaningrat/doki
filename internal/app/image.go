@@ -21,6 +21,10 @@ func (u *ImageUseCase) ListAllImages(ctx context.Context) ([]domain.Image, error
 	return u.service.ListAllImages(ctx)
 }
 
+func (u *ImageUseCase) RemoveImage(ctx context.Context, id string) error {
+	return u.service.RemoveImage(ctx, id)
+}
+
 type ImageUseCases struct {
 	Query   ImageQueryUseCase
 	Control ImageControlUseCase
@@ -31,4 +35,5 @@ type ImageQueryUseCase interface {
 }
 
 type ImageControlUseCase interface {
+	RemoveImage(ctx context.Context, identifier string) error
 }
