@@ -64,7 +64,10 @@ func RunCLI(usecases *AppUseCases) {
 
 	statusToggle := helper.StatusToggle(tuiApp)
 	statusBar := helper.StatusBar()
-	exitGuide := helper.ExitGuide()
+	containerGuide := helper.ContainerGuide()
+	imageGuide := helper.ImageGuide()
+	networkGuide := helper.NetworkGuide()
+	volumeGuide := helper.VolumeGuide()
 
 	// Initialize UI elements
 	// helper.UpdateToggleText(currentContainerFilterState, statusToggle)
@@ -152,7 +155,7 @@ func RunCLI(usecases *AppUseCases) {
 		Table:                 containerTable,
 		StatusToggle:          statusToggle,
 		StatusBar:             statusBar,
-		ExitGuide:             exitGuide, // Potentially change to "Back to Menu"
+		ExitGuide:             containerGuide, // Potentially change to "Back to Menu"
 		UseCases:              usecases.Containers,
 		DisplayStatus:         displayTimedStatus,
 		CurrentFilterState:    &currentContainerFilterState, // Pass pointer to allow modification
@@ -167,7 +170,7 @@ func RunCLI(usecases *AppUseCases) {
 		Pages:                pages,
 		Table:                imageTable,
 		StatusBar:            statusBar,
-		ExitGuide:            exitGuide, // Potentially change to "Back to Menu"
+		ExitGuide:            imageGuide, // Potentially change to "Back to Menu"
 		DisplayStatus:        displayTimedStatus,
 		StartAutoRefreshFunc: startAutoRefresh, // Pass auto-refresh controls
 		StopAutoRefreshFunc:  stopAutoRefreshFunc,
@@ -180,7 +183,7 @@ func RunCLI(usecases *AppUseCases) {
 		Pages:                pages,
 		Table:                volumeTable,
 		StatusBar:            statusBar,
-		ExitGuide:            exitGuide,
+		ExitGuide:            volumeGuide,
 		DisplayStatus:        displayTimedStatus,
 		StartAutoRefreshFunc: startAutoRefresh,
 		StopAutoRefreshFunc:  stopAutoRefreshFunc,
@@ -193,7 +196,7 @@ func RunCLI(usecases *AppUseCases) {
 		Pages:                pages,
 		Table:                networkTable,
 		StatusBar:            statusBar,
-		ExitGuide:            exitGuide,
+		ExitGuide:            networkGuide,
 		DisplayStatus:        displayTimedStatus,
 		StartAutoRefreshFunc: startAutoRefresh,
 		StopAutoRefreshFunc:  stopAutoRefreshFunc,

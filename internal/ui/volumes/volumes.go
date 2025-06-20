@@ -60,7 +60,7 @@ func NewVolumeListPage(cfg Config) *VolumeListPage {
 		AddItem(tview.NewTextView().SetText("Docker Volumes").SetTextAlign(tview.AlignCenter), 1, 0, false).
 		AddItem(cfg.Table, 0, 1, true).
 		AddItem(cfg.StatusBar, 1, 0, false).
-		AddItem(cfg.ExitGuide, 1, 0, false)
+		AddItem(cfg.ExitGuide, 2, 0, false)
 	page := &VolumeListPage{ // Create the VolumeListPage instance
 		Flex:   layout,
 		config: cfg,

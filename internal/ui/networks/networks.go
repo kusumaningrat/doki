@@ -60,7 +60,7 @@ func NewNetworkListPage(cfg Config) *NetworkListPage {
 		AddItem(tview.NewTextView().SetText("Docker Networks").SetTextAlign(tview.AlignCenter), 1, 0, false).
 		AddItem(cfg.Table, 0, 1, true).
 		AddItem(cfg.StatusBar, 1, 0, false).
-		AddItem(cfg.ExitGuide, 1, 0, false)
+		AddItem(cfg.ExitGuide, 2, 0, false)
 	page := &NetworkListPage{
 		Flex:   layout,
 		config: cfg,

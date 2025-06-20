@@ -61,7 +61,7 @@ func NewImageListPage(cfg Config) *ImageListPage {
 		AddItem(tview.NewTextView().SetText("Docker Images").SetTextAlign(tview.AlignCenter), 1, 0, false).
 		AddItem(cfg.Table, 0, 1, true).
 		AddItem(cfg.StatusBar, 1, 0, false).
-		AddItem(cfg.ExitGuide, 1, 0, false)
+		AddItem(cfg.ExitGuide, 2, 0, false)
 	page := &ImageListPage{ // Create the ImageListPage instance
 		Flex:   layout,
 		config: cfg,

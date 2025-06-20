@@ -71,7 +71,7 @@ func NewContainerListPage(cfg Config) *ContainerListPage {
 		AddItem(p.config.StatusToggle, 1, 0, false).
 		AddItem(p.config.Table, 0, 1, true). // Table is the primary focus of this view
 		AddItem(p.config.StatusBar, 1, 0, false).
-		AddItem(p.config.ExitGuide, 1, 0, false) // This guide might instruct to press 'm' for menu
+		AddItem(p.config.ExitGuide, 2, 0, false) // This guide might instruct to press 'm' for menu
 
 	return p
 }
